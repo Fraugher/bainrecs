@@ -5,9 +5,9 @@ app = Flask(__name__)
 
 yelp_api.endpoints.register_endpoints(app);
 
-@app.route('/hello')
-def hello_world():
-    return 'Hello from Flask 2!'
+# @app.route('/hello')
+# def hello_world():
+#     return 'Hello from Flask 2!'
 
 if __name__ == '__main__':
     # For local development only
