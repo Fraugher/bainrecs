@@ -1,16 +1,27 @@
-
 from flask import Flask
-# import yelp_api.endpoints
-import yelp_api.simplestart as simplestart
+from yelp_api.endpoints import yelp_endpoints
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
+app.register_blueprint(yelp_endpoints)
 
-# yelp_api.endpoints.register_endpoints(app)
-simplestart.start(app)
+@app.route('/hello')
+def hello_world():
+    return 'Hello from App!'
 
-# @app.route('/hello')
-# def hello_world():
-#     return 'Hello from Flask 2!'
+def application(environ, start_response):
+  if environ['REQUEST_METHOD'] == 'OPTIONS':
+    start_response(
+      '200 OK',
+      [
+        ('Content-Type', 'application/json'),
+        ('Access-Control-Allow-Origin', '*'),
+        ('Access-Control-Allow-Headers', 'Authorization, Content-Type'),
+        ('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'),
+      ]
+    )
+    return ''
 
 if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=6000)
+    app.run(debug=True, host='127.0.0.1', port=5000)
