@@ -207,11 +207,11 @@ def apify_popfromfile():
         with open('search.json', 'r') as search_resuls_file:
             reviews = json.load(search_resuls_file)
     except FileNotFoundError:
-        return {"Error: The file 'data.json' was not found."}, 404
+        return "Error: The file 'data.json' was not found." #}, 404
     except json.JSONDecodeError:
-        return {"Error: Could not decode JSON from the file."}, 500
+        return "Error: Could not decode JSON from the file." #}, 500
     except Exception as e:
-        return {f"An unexpected error occurred: {e}"}, 500
+        return f"An unexpected error occurred: {e}" #}, 500
 
 
     for review in reviews:
