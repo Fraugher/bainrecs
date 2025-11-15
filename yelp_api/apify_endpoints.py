@@ -201,7 +201,7 @@ def apify_testpop():
     return msg
 
 @apify_endpoints.route('/apify/popfromfile')
-def apify_testpop():
+def apify_popfromfile():
     review_count=0
     try:
         with open('search.json', 'r') as search_resuls_file:
