@@ -8,7 +8,6 @@ load_dotenv()
 db = SQLAlchemy()
 SQL_ALCHEMY_URI = os.getenv('SQL_ALCHEMY_URI')
 PYTHONANYWHERE_API_KEY = os.getenv('PYTHONANYWHERE_API_KEY')
-# app = Flask(__name__)
 
 def create_app():
   app = Flask(__name__)
@@ -26,23 +25,19 @@ def create_app():
   app.register_blueprint(apify_endpoints)
   app.register_blueprint(yelp_endpoints)
   return app
-#
-# @app.route('/hello')
-# def hello_world():
-#     return 'Hello from App!'
 
-def application(environ, start_response):
-  if environ['REQUEST_METHOD'] == 'OPTIONS':
-    start_response(
-      '200 OK',
-      [
-        ('Content-Type', 'application/json'),
-        ('Access-Control-Allow-Origin', '*'),
-        ('Access-Control-Allow-Headers', 'Authorization, Content-Type'),
-        ('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'),
-      ]
-    )
-    return ''
+# def application(environ, start_response):
+#   if environ['REQUEST_METHOD'] == 'OPTIONS':
+#     start_response(
+#       '200 OK',
+#       [
+#         ('Content-Type', 'application/json'),
+#         ('Access-Control-Allow-Origin', '*'),
+#         ('Access-Control-Allow-Headers', 'Authorization, Content-Type'),
+#         ('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'),
+#       ]
+#     )
+#     return ''
 
 # @app.before_request
 # def require_api_key():
@@ -55,9 +50,11 @@ def application(environ, start_response):
 
 # if __name__ == '__main__':
 #     app.run(debug=True, host='127.0.0.1', port=5000)
+app = create_app()
+# For WSGI (PythonAnywhere uses this)
+application = app
 
 if __name__ == '__main__':
-    app = create_app()
     with app.app_context():
-        db.create_all() # Operations requiring app context
+        db.create_all()  # Operations requiring app context
     app.run(debug=True)
