@@ -10,8 +10,12 @@ yelp_endpoints = Blueprint('yelp_endpoints', __name__)
 # from .utils import require_api_key, after_request, handle_yelp_error
 
 YELP_API_KEY = os.getenv('YELP_API_KEY')
+PYTHONANYWHERE_API_KEY = os.getenv('PYTHONANYWHERE_API_KEY')
 
-def require_api_key(f):
+def is_valid_pythonanywhere_api_key(api_key):
+    return api_key == PYTHONANYWHERE_API_KEY
+
+def require_yelp_api_key(f):
     """Decorator to check if Yelp API key is configured"""
 
     @wraps(f)
@@ -40,7 +44,7 @@ def hello_world():
     return 'Hello from Flask endpoints!'
 
 @yelp_endpoints.route('/reviews', methods=['GET'])
-@require_api_key
+@require_yelp_api_key
 def get_restaurants_reviews         ():
     biz_id=request.args.get('biz_id')
     return get_reviews(biz_id)
@@ -50,7 +54,7 @@ def get_reviews(biz_id):
     return get_yelp_api(url)
 
 @yelp_endpoints.route('/search', methods=['GET'])
-@require_api_key
+@require_yelp_api_key
 def search_restaurants():
     """
     Search for restaurants using Yelp API
@@ -77,6 +81,7 @@ def search_restaurants():
     # Build Yelp API query parameters
     yelp_params = {
         'location': location,
+        'locale': 'en_CA',
         'term': 'restaurants',
         'limit': 3, # this is temporary during development to keep things fast
         'radius': int(request.args.get('radius', 10000)),
@@ -144,7 +149,7 @@ def search_restaurants():
         return response_biz, 200
 
 @yelp_endpoints.route('/highlights', methods=['GET'])
-@require_api_key
+@require_yelp_api_key
 def get_restaurants_highlights         ():
     biz_id=request.args.get('biz_id')
     return get_highlights(biz_id)
