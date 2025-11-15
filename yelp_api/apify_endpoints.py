@@ -200,6 +200,52 @@ def apify_testpop():
 
     return msg
 
+
+@apify_endpoints.route('/apify/debug')
+def apify_debug():
+    import os
+
+    current_dir = os.getcwd()
+    file_name = 'search.json'
+
+    # Check multiple possible locations
+    locations = [
+        os.path.join(current_dir, file_name),
+        os.path.join('/home/fraugher/bainrecs', file_name),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), file_name),
+    ]
+
+    debug_info = f"<h3>Debug Info:</h3>"
+    debug_info += f"<p>Current working directory: {current_dir}</p>"
+    debug_info += f"<p>This file location: {os.path.abspath(__file__)}</p>"
+    debug_info += f"<h4>Checking locations:</h4><ul>"
+
+    for loc in locations:
+        exists = os.path.exists(loc)
+        debug_info += f"<li>{loc} - {'✓ EXISTS' if exists else '✗ NOT FOUND'}</li>"
+
+    # List files in current directory
+    debug_info += f"</ul><h4>Files in {current_dir}:</h4><ul>"
+    try:
+        for f in os.listdir(current_dir):
+            debug_info += f"<li>{f}</li>"
+    except Exception as e:
+        debug_info += f"<li>Error listing: {e}</li>"
+
+    debug_info += "</ul>"
+
+    # List files in project root
+    debug_info += f"<h4>Files in /home/fraugher/bainrecs:</h4><ul>"
+    try:
+        for f in os.listdir('/home/fraugher/bainrecs'):
+            debug_info += f"<li>{f}</li>"
+    except Exception as e:
+        debug_info += f"<li>Error listing: {e}</li>"
+
+    debug_info += "</ul>"
+
+    return debug_info
+
 @apify_endpoints.route('/apify/popfromfile')
 def apify_popfromfile():
     review_count=0
