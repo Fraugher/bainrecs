@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, json
 from functools import wraps
 from datetime import datetime, timezone
 from app import db
+import json
 
 load_dotenv()
 apify_endpoints = Blueprint('apify_endpoints', __name__)
@@ -44,7 +45,7 @@ class Review(db.Model):
 
 @apify_endpoints.route('/apify/popdb')
 def apify_popdb():
-    item_count=0
+    review_count=0
     client = ApifyClient(APIFY_API_KEY)
     run_input = {
       "keywords": ["upscale," "business," "quiet", "private dining"],
@@ -62,17 +63,17 @@ def apify_popdb():
     apify_uri ="tri_angle/restaurant-review-aggregator"
     run = client.actor(apify_uri).call(run_input=run_input)
 
-    for item in client.dataset(run["defaultDatasetId"]).iterate_items():
-        google_maps_id  =item.get("googleMapsPlaceId")
-        place_name = item.get("placeName","")
-        place_url = item.get("placeUrl","")
-        place_address = item.get("placeAddress","")
-        provider = item.get("provider","")
-        review_text = item.get("reviewText","")
-        review_date = item.get("reviewDate", None)
-        review_rating = item.get("reviewRating", None)
-        author_name = item.get("authorName","")
-        item_count += 1
+    for review in client.dataset(run["defaultDatasetId"]).iterate_items():
+        google_maps_id  =review.get("googleMapsPlaceId")
+        place_name = review.get("placeName","")
+        place_url = review.get("placeUrl","")
+        place_address = review.get("placeAddress","")
+        provider = review.get("provider","")
+        review_text = review.get("reviewText","")
+        review_date = review.get("reviewDate", None)
+        review_rating = review.get("reviewRating", None)
+        author_name = review.get("authorName","")
+        review_count += 1
         new_review = Review(
             google_maps_id=google_maps_id,
             place_name=place_name,
@@ -94,7 +95,7 @@ def apify_popdb():
 
     try:
         db.session.commit()
-        msg=f"Successfully added {item_count} reviews to database"
+        msg=f"Successfully added {review_count} reviews to database"
     except Exception as e:
         db.session.rollback()
         msg=f"Error adding reviews: {e}"
@@ -103,8 +104,8 @@ def apify_popdb():
 
 @apify_endpoints.route('/apify/testpop')
 def apify_testpop():
-    item_count=0
-    items = [
+    review_count=0
+    reviews = [
   {
     "placeName": "Maison Selby",
     "placeAddress": "592 Sherbourne St, Toronto, ON M4X 1L4, Canada",
@@ -160,17 +161,17 @@ def apify_testpop():
     "authorName": "Arthur Z"
   }
 ]
-    for item in items:
-        google_maps_id  =item.get("googleMapsPlaceId")
-        place_name = item.get("placeName","")
-        place_url = item.get("placeUrl","")
-        place_address = item.get("placeAddress","")
-        provider = item.get("provider","")
-        review_text = item.get("reviewText","")
-        review_date = item.get("reviewDate", None)
-        review_rating = item.get("reviewRating", None)
-        author_name = item.get("authorName","")
-        item_count += 1
+    for review in reviews:
+        google_maps_id  =review.get("googleMapsPlaceId")
+        place_name = review.get("placeName","")
+        place_url = review.get("placeUrl","")
+        place_address = review.get("placeAddress","")
+        provider = review.get("provider","")
+        review_text = review.get("reviewText","")
+        review_date = review.get("reviewDate", None)
+        review_rating = review.get("reviewRating", None)
+        author_name = review.get("authorName","")
+        review_count += 1
         new_review = Review(
             google_maps_id=google_maps_id,
             place_name=place_name,
@@ -192,7 +193,60 @@ def apify_testpop():
 
     try:
         db.session.commit()
-        msg=f"Successfully added {item_count} reviews to database"
+        msg=f"Successfully added {review_count} reviews to database"
+    except Exception as e:
+        db.session.rollback()
+        msg=f"Error adding reviews: {e}"
+
+    return msg
+
+@apify_endpoints.route('/apify/popfromfile')
+def apify_testpop():
+    review_count=0
+    try:
+        with open('search.json', 'r') as search_resuls_file:
+            reviews = json.load(search_resuls_file)
+    except FileNotFoundError:
+        return {"Error: The file 'data.json' was not found."}, 404
+    except json.JSONDecodeError:
+        return {"Error: Could not decode JSON from the file."}, 500
+    except Exception as e:
+        return {f"An unexpected error occurred: {e}"}, 500
+
+
+    for review in reviews:
+        google_maps_id = review.get("googleMapsPlaceId")
+        place_name = review.get("placeName","")
+        place_url = review.get("placeUrl","")
+        place_address = review.get("placeAddress","")
+        provider = review.get("provider","")
+        review_text = review.get("reviewText","")
+        review_date = review.get("reviewDate", None)
+        review_rating = review.get("reviewRating", None)
+        author_name = review.get("authorName","")
+        review_count += 1
+        new_review = Review(
+            google_maps_id=google_maps_id,
+            place_name=place_name,
+            place_url=place_url,
+            place_address=place_address,
+            provider = provider,
+            review_text=review_text,
+            review_date=review_date if isinstance(review_date, datetime) else None,
+            review_rating=review_rating,
+            author_name=author_name,
+            ignore_for_quality=False,
+            ignore_for_rating=False,
+            ignore_for_insufficient=False,
+            selected_as_top_rating=False
+        )
+
+        # Add to session
+        db.session.add(new_review)
+
+    try:
+        db.session.commit()
+        msg=f"Successfully added {review_count} reviews to database"
     except Exception as e:
         db.session.rollback()
         msg=f"Error adding reviews: {e}"
@@ -220,8 +274,8 @@ def apify_test():
     # Fetch and print Actor results from the run's dataset (if there are any)
     print("💾 Check your data here: https://console.apify.com/storage/datasets/" + run["defaultDatasetId"])
     restaurant_list = []
-    for item in client.dataset(run["defaultDatasetId"]).iterate_items():
-        restaurant_list.append(item)
+    for review in client.dataset(run["defaultDatasetId"]).iterate_items():
+        restaurant_list.append(review)
     json_string = json.dumps(restaurant_list, indent=4)
     return json_string
 
