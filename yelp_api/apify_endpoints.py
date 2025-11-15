@@ -248,9 +248,10 @@ def apify_debug():
 
 @apify_endpoints.route('/apify/popfromfile')
 def apify_popfromfile():
+    file_path = '/home/fraugher/bainrecs/search.json'
     review_count=0
     try:
-        with open('search.json', 'r') as search_resuls_file:
+        with open(file_path, 'r') as search_resuls_file:
             reviews = json.load(search_resuls_file)
     except FileNotFoundError:
         return "Error: The file 'search.json' was not found." #}, 404
