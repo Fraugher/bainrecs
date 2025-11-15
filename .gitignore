@@ -58,3 +58,4 @@ htmlcov/
 *api_key*
 *secret*
 config_local.py
+app_bup.py

@@ -47,8 +47,9 @@ def apify_popdb():
     item_count=0
     client = ApifyClient(APIFY_API_KEY)
     run_input = {
-      "keywords": ["Maison Selby"],
+      "keywords": ["upscale," "business," "quiet", "private dining"],
       "location": "2 Bloor Street E,  Toronto, ON M4W 1A8, Canada",
+      "maxDistanceMeters": 10000,
       "checkNames": False,
       "requireExactNameMatch": False,
       "deeperCityScrape": False,
