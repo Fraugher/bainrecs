@@ -1,12 +1,12 @@
 import os
-import requests
 from apify_client import ApifyClient
 from dotenv import load_dotenv
-from flask import Blueprint, jsonify, json
+from flask import Blueprint, jsonify, json, request
 from functools import wraps
 from datetime import datetime, timezone
 from app import db
 import json
+from apify_client.errors import ApifyApiError
 
 load_dotenv()
 apify_endpoints = Blueprint('apify_endpoints', __name__)
@@ -16,10 +16,105 @@ YELP_API_KEY = os.getenv('YELP_API_KEY')
 PYTHONANYWHERE_API_KEY = os.getenv('PYTHONANYWHERE_API_KEY')
 SQL_ALCHEMY_URI = os.getenv('SQL_ALCHEMY_URI')
 
-# db = SQLAlchemy()
-# app.config["SQLALCHEMY_DATABASE_URI"] = SQL_ALCHEMY_URI
-# app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 280}
-# db.init_app(app)
+@apify_endpoints.route('/apify/startpop')
+def startpop():
+    client = ApifyClient(APIFY_API_KEY)
+    run_input = {
+      "keywords": ["upscale," "business," "quiet", "private dining"],
+      "location": "2 Bloor Street E,  Toronto, ON M4W 1A8, Canada",
+      "maxDistanceMeters": 10, #10000,
+      "checkNames": False,
+      "requireExactNameMatch": False,
+      "deeperCityScrape": False,
+      "maxReviewsPerPlaceAndProvider": 1, #10,
+      "reviewsFromDate" : "2021-01-01",
+      "scrapeReviewPictures": False,
+      "scrapeReviewResponses": False
+    }
+
+    apify_uri ="tri_angle/restaurant-review-aggregator"
+    actor_run = client.actor(apify_uri).start(run_input=run_input)
+    run_id = actor_run["id"]
+    return f"<div>Reviews scraping run started with ID: {run_id} at {datetime.now().strftime("%H:%M:%S")}</div><div>visit <a target='_blank' href='{request.host_url}apify/waitforreviews?run={run_id}'>{request.host_url}apify/waitforreviews?run={run_id}</a> for status update</div>"
+
+@apify_endpoints.route('/apify/waitforreviews')
+def waitforreviews():
+    run_id = request.args.get('run')
+    if run_id is None:
+        return "Bad Request"
+    client = ApifyClient(APIFY_API_KEY)
+    try:
+        run_client = client.run(run_id)
+        run_info = run_client.get()
+        status = run_info['status']
+        return f"Run status: {status} for run: {run_id} at {datetime.now().strftime("%H:%M:%S")}<div><a href='.'>refresh</a> this page for status updates</div>"
+    except ApifyApiError as e:
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            return f"Error retrieving run with ID '{run_id}': {e}. The provided run ID likely does not exist or is incorrect."
+        elif "badly formed" in str(e).lower() or "invalid format" in str(e).lower():
+            return f"Error retrieving run with ID '{run_id}': {e}. The provided run ID is badly formed or in an invalid format."
+        else:
+            if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+                return f"Error retrieving run with ID '{run_id}': {e}.  The provided run ID likely does not exist or is incorrect."
+            elif "badly formed" in str(e).lower() or "invalid format" in str(e).lower():
+                return f"Error retrieving run with ID '{run_id}': {e}. The provided run ID is badly formed or in an invalid format."
+            else:
+                return f"Error retrieving run with ID '{run_id}': {e}. An unexpected Apify API error occurred."
+    except Exception as e:
+        # Catch any other unexpected errors
+        return f"An unexpected error occurred: {e}. An unexpected Apify API error occurred."
+
+@apify_endpoints.route('/apify/popdb')
+def popdb():
+    review_count = 0
+    run_id = request.args.get('run')
+    if run_id is None:
+        return "Bad Request"
+    client = ApifyClient(APIFY_API_KEY)
+    run_client = client.run(run_id)
+    run_info = run_client.get()
+    if run_info['status'] != "SUCCEEDED":
+        return f"Data is not ready for run with ID {run_id}, run status is '{run_info['status']}'"
+    if run_info and 'defaultDatasetId' in run_info and run_info['defaultDatasetId']:
+        # return f"run status is '{run_info['status']}'"
+        for review in client.dataset(run_info["defaultDatasetId"]).iterate_items():
+            google_maps_id  =review.get("googleMapsPlaceId")
+            place_name = review.get("placeName","")
+            place_url = review.get("placeUrl","")
+            place_address = review.get("placeAddress","")
+            provider = review.get("provider","")
+            review_text = review.get("reviewText","")
+            review_date = review.get("reviewDate", None)
+            review_rating = review.get("reviewRating", None)
+            author_name = review.get("authorName","")
+            review_count += 1
+            new_review = Review(
+                google_maps_id=google_maps_id,
+                place_name=place_name,
+                place_url=place_url,
+                place_address=place_address,
+                provider = provider,
+                review_text=review_text,
+                review_date=review_date if isinstance(review_date, datetime) else None,
+                review_rating=review_rating,
+                author_name=author_name,
+                ignore_for_quality=False,
+                ignore_for_rating=False,
+                ignore_for_insufficient=False,
+                selected_as_top_rating=False
+            )
+
+            # Add to session
+            db.session.add(new_review)
+        try:
+            db.session.commit()
+            msg=f"Successfully added {review_count} reviews to database"
+        except Exception as e:
+            db.session.rollback()
+            msg=f"Error adding reviews: {e}"
+    else:
+        msg= f"Error retrieving run with ID '{run_id}'."
+    return msg
 
 class Review(db.Model):
     __tablename__ = 'reviews'
@@ -42,65 +137,6 @@ class Review(db.Model):
 
     def __repr__(self):
         return f'<Review {self.id}: {self.place_name} - {self.review_rating}/5>'
-
-@apify_endpoints.route('/apify/popdb')
-def apify_popdb():
-    review_count=0
-    client = ApifyClient(APIFY_API_KEY)
-    run_input = {
-      "keywords": ["upscale," "business," "quiet", "private dining"],
-      "location": "2 Bloor Street E,  Toronto, ON M4W 1A8, Canada",
-      "maxDistanceMeters": 10000,
-      "checkNames": False,
-      "requireExactNameMatch": False,
-      "deeperCityScrape": False,
-      "maxReviewsPerPlaceAndProvider": 10,
-      "reviewsFromDate" : "2021-01-01",
-      "scrapeReviewPictures": False,
-      "scrapeReviewResponses": False
-    }
-
-    apify_uri ="tri_angle/restaurant-review-aggregator"
-    run = client.actor(apify_uri).call(run_input=run_input)
-
-    for review in client.dataset(run["defaultDatasetId"]).iterate_items():
-        google_maps_id  =review.get("googleMapsPlaceId")
-        place_name = review.get("placeName","")
-        place_url = review.get("placeUrl","")
-        place_address = review.get("placeAddress","")
-        provider = review.get("provider","")
-        review_text = review.get("reviewText","")
-        review_date = review.get("reviewDate", None)
-        review_rating = review.get("reviewRating", None)
-        author_name = review.get("authorName","")
-        review_count += 1
-        new_review = Review(
-            google_maps_id=google_maps_id,
-            place_name=place_name,
-            place_url=place_url,
-            place_address=place_address,
-            provider = provider,
-            review_text=review_text,
-            review_date=review_date if isinstance(review_date, datetime) else None,
-            review_rating=review_rating,
-            author_name=author_name,
-            ignore_for_quality=False,
-            ignore_for_rating=False,
-            ignore_for_insufficient=False,
-            selected_as_top_rating=False
-        )
-
-        # Add to session
-        db.session.add(new_review)
-
-    try:
-        db.session.commit()
-        msg=f"Successfully added {review_count} reviews to database"
-    except Exception as e:
-        db.session.rollback()
-        msg=f"Error adding reviews: {e}"
-
-    return msg
 
 @apify_endpoints.route('/apify/testpop')
 def apify_testpop():
@@ -352,73 +388,7 @@ def apify_health():
     }), 200 if api_key_configured else 503
 
 
-
-def get_apify_api (url, params=None):
-    if params is None:
-        params = {}
-    headers = {
-        'Authorization': f'Bearer {YELP_API_KEY}'
-    }
-
-    try:
-        response = requests.get(
-            url,
-            params=params,
-            headers=headers,
-            timeout=10
-        )
-
-        # Parse response
-        try:
-            response_data = response.json()
-        except ValueError:
-            response_data = {'raw_response': response.text}
-
-        # Handle successful response
-        if response.status_code == 200:
-            return response_data, 200
-
-        # Handle error responses
-        error_response = handle_yelp_error(response.status_code, response_data)
-        return jsonify(error_response), response.status_code
-
-    except requests.exceptions.Timeout:
-        return jsonify({
-            'error': 'Request Timeout',
-            'message': 'The request to Yelp API timed out. Please try again.',
-        }), 504
-
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            'error': 'Connection Error',
-            'message': 'Unable to reach Yelp API. Please check your connection.',
-        }), 503
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({
-            'error': 'Request Error',
-            'message': 'An error occurred while making the request to Yelp API.',
-            'details': str(e)
-        }), 500
-
-    except Exception as e:
-        return jsonify({
-            'error': 'Internal Server Error',
-            'message': 'An unexpected error occurred.',
-            'details': str(e)
-        }), 500
-
-
-# CORS support not needed we are using Flask-Cors
-# @yelp_endpoints.after_request
-# def after_request(response):
-#     """Add CORS headers to all responses"""
-#     response.headers.add('Access-Control-Allow-Origin', '*')
-#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-#     response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
-#     return response
-
-def handle_yelp_error(status_code, response_data):
+def handle_apify_error(status_code, response_data):
     """Handle specific Yelp API error codes with appropriate messages"""
 
     error_messages = {
