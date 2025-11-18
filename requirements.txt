@@ -18,4 +18,3 @@ SQLAlchemy==2.0.44
 mysqlclient==2.2.7
 PyMySQL==1.1.2
 apify_client==2.3.0
-
