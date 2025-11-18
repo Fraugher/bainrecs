@@ -262,7 +262,7 @@ def get_restaurant_ratings(google_maps_id):
 
 
 # 5. Search restaurants and reviews by place_name keyword
-@review_endpoints.route('/reviews/search', methods=['GET'])
+@review_endpoints.route('/search', methods=['GET'])
 def search_reviews():
     try:
         keyword = request.args.get('keyword', '').strip()
@@ -346,7 +346,7 @@ def search_reviews():
 
 
 # 6. Search restaurants and ratings by place_name keyword
-@review_endpoints.route('/ratings/search', methods=['GET'])
+@review_endpoints.route('/search', methods=['GET'])
 def search_ratings():
     try:
         keyword = request.args.get('keyword', '').strip()
