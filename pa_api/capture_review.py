@@ -7,13 +7,21 @@ capture_review = Blueprint('capture_review', __name__)
 
 @capture_review.route('/submit-review', methods=['POST'])
 def submit_review():
+    import traceback
     try:
+        print("=== SUBMIT REVIEW CALLED ===")
+        print(f"Form data: {request.form}")
         # Extract data from form
         google_maps_id = request.form.get('google_maps_id', '').strip()
+        print(f"google_maps_id: {google_maps_id}")
         review_title = request.form.get('review_title', '').strip()
+        print(f"review_title: {review_title}")
         review_text = request.form.get('review_text', '').strip()
+        print(f"review_text: {review_text}")
         review_rating = request.form.get('review_rating', '').strip()
+        print(f"review_rating: {review_rating}")
         author_name = request.form.get('author_name', '').strip()
+        print(f"author_name: {author_name}")
 
         # Validation
         errors = []
@@ -88,8 +96,10 @@ def submit_review():
         }), 500
 
     except Exception as e:
+        print(f"ERROR: {str(e)}")
+        print(f"TRACEBACK: {traceback.format_exc()}")
         return jsonify({
             'success': False,
-            'error': 'An unexpected error occurred',
-            'details': str(e)
+            'error': str(e),
+            'traceback': traceback.format_exc()
         }), 500
