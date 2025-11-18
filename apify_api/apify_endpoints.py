@@ -16,7 +16,7 @@ YELP_API_KEY = os.getenv('YELP_API_KEY')
 PYTHONANYWHERE_API_KEY = os.getenv('PYTHONANYWHERE_API_KEY')
 SQL_ALCHEMY_URI = os.getenv('SQL_ALCHEMY_URI')
 
-@apify_endpoints.route('/apify/startpop')
+@apify_endpoints.route('/startpop')
 def startpop():
     client = ApifyClient(APIFY_API_KEY)
     run_input = {
@@ -37,7 +37,7 @@ def startpop():
     run_id = actor_run["id"]
     return f"<div>Reviews scraping run started with ID: {run_id} at {datetime.now().strftime("%H:%M:%S")}</div><div>visit <a target='_blank' href='{request.host_url}apify/waitforreviews?run={run_id}'>{request.host_url}apify/waitforreviews?run={run_id}</a> for status update</div>"
 
-@apify_endpoints.route('/apify/waitforreviews')
+@apify_endpoints.route('/waitforreviews')
 def waitforreviews():
     run_id = request.args.get('run')
     if run_id is None:
@@ -64,7 +64,7 @@ def waitforreviews():
         # Catch any other unexpected errors
         return f"An unexpected error occurred: {e}. An unexpected Apify API error occurred."
 
-@apify_endpoints.route('/apify/one2db')
+@apify_endpoints.route('/one2db')
 def one2db():
     if request.is_json:
         try:
@@ -108,7 +108,7 @@ def one2db():
         db.session.rollback()
         return {"message": f"Error adding your review to our database, detail: {e}"},200
 
-@apify_endpoints.route('/apify/popdb', methods=['POST'])
+@apify_endpoints.route('/popdb', methods=['POST'])
 def popdb():
     review_count = 0
     run_id = request.args.get('run')
@@ -184,7 +184,7 @@ class Review(db.Model):
     def __repr__(self):
         return f'<Review {self.id}: {self.place_name} - {self.review_rating}/5>'
 
-@apify_endpoints.route('/apify/testpop')
+@apify_endpoints.route('/testpop')
 def apify_testpop():
     review_count=0
     reviews = [
@@ -284,7 +284,7 @@ def apify_testpop():
     return msg
 
 
-@apify_endpoints.route('/apify/debug')
+@apify_endpoints.route('/debug')
 def apify_debug():
     import os
 
@@ -329,7 +329,7 @@ def apify_debug():
 
     return debug_info
 
-@apify_endpoints.route('/apify/popfromfile')
+@apify_endpoints.route('/popfromfile')
 def apify_popfromfile():
     file_path = '/home/fraugher/bainrecs/search.json'
     review_count=0
@@ -383,7 +383,7 @@ def apify_popfromfile():
 
     return msg
 
-@apify_endpoints.route('/apify/test')
+@apify_endpoints.route('/test')
 def apify_test():
     client = ApifyClient(APIFY_API_KEY)
     run_input = {
@@ -425,7 +425,7 @@ def require_yelp_api_key(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@apify_endpoints.route('/apify/health')
+@apify_endpoints.route('/health')
 def apify_health():
     """Health check endpoint"""
     api_key_configured = APIFY_API_KEY is not None

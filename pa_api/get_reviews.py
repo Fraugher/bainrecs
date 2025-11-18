@@ -12,7 +12,7 @@ def get_sql_from_file():
     query = load_query('get_all_reviews.sql')
 
 # 1. GET all restaurants with their reviews
-review_endpoints.route('/api/reviews', methods=['GET'])
+review_endpoints.route('/reviews', methods=['GET'])
 def get_all_reviews():
     try:
         restaurant_type = request.args.get('restaurant_type', 'all')
@@ -84,7 +84,7 @@ def get_all_reviews():
 
 
 # 2. GET all restaurants with their ratings (including Bain ratings)
-review_endpoints.route('/api/ratings', methods=['GET'])
+review_endpoints.route('/ratings', methods=['GET'])
 def get_all_ratings():
     try:
         restaurant_type = request.args.get('restaurant_type', 'all')
@@ -136,7 +136,7 @@ def get_all_ratings():
 
 
 # 3. GET one restaurant with its reviews
-review_endpoints.route('/api/reviews/<google_maps_id>', methods=['GET'])
+review_endpoints.route('/reviews/<google_maps_id>', methods=['GET'])
 def get_restaurant_reviews(google_maps_id):
     try:
         provider = request.args.get('provider', None)
@@ -209,7 +209,7 @@ def get_restaurant_reviews(google_maps_id):
 
 
 # 4. GET one restaurant with its ratings (including Bain ratings)
-review_endpoints.route('/api/ratings/<google_maps_id>', methods=['GET'])
+review_endpoints.route('/ratings/<google_maps_id>', methods=['GET'])
 def get_restaurant_ratings(google_maps_id):
     try:
         query = """
