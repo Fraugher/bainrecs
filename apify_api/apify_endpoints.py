@@ -3,9 +3,10 @@ from apify_client import ApifyClient
 from dotenv import load_dotenv
 from flask import Blueprint, jsonify, json, request
 from functools import wraps
-from datetime import datetime, timezone
+from datetime import datetime
 from extensions import db
 import json
+from models import Review
 from apify_client.errors import ApifyApiError
 
 load_dotenv()
@@ -160,29 +161,6 @@ def popdb():
     else:
         msg= f"Error retrieving run with ID '{run_id}'."
     return msg
-
-class Review(db.Model):
-    __tablename__ = 'reviews'
-
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    google_maps_id =db.Column(db.String(128))
-    date_updated = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    place_name = db.Column(db.String(255), nullable=False)
-    place_url = db.Column(db.String(255))
-    place_address = db.Column(db.String(255))
-    provider = db.Column(db.String(100))
-    review_title = db.Column(db.String(255))
-    review_text = db.Column(db.Text)
-    review_date = db.Column(db.DateTime)
-    review_rating = db.Column(db.SmallInteger)  # TINYINT maps to SmallInteger
-    author_name = db.Column(db.String(100))
-    ignore_for_quality = db.Column(db.Boolean)
-    ignore_for_rating = db.Column(db.Boolean)
-    ignore_for_insufficient = db.Column(db.Boolean)
-    selected_as_top_rating = db.Column(db.Boolean)
-
-    def __repr__(self):
-        return f'<Review {self.id}: {self.place_name} - {self.review_rating}/5>'
 
 @apify_endpoints.route('/testpop')
 def apify_testpop():

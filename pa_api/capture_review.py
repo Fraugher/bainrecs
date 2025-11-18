@@ -1,20 +1,9 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
+from models import Review
 
 capture_review = Blueprint('capture_review', __name__)
-
-class ReviewDetails(db.Model):
-    __tablename__ = 'reviews'
-
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    google_maps_id = db.Column(db.String(128), nullable=False)
-    provider = db.Column(db.String(100), nullable=True)
-    review_title = db.Column(db.String(255), nullable=True)
-    review_text = db.Column(db.Text, nullable=True)
-    review_rating = db.Column(db.SmallInteger, nullable=True)
-    author_name = db.Column(db.String(128), nullable=True)
-
 
 @capture_review.route('/submit-review', methods=['POST'])
 def submit_review():
@@ -63,7 +52,7 @@ def submit_review():
             }), 400
 
         # Create new review record
-        new_review = ReviewDetails(
+        new_review = Review(
             google_maps_id=google_maps_id,
             provider='Bain',
             review_title=review_title if review_title else None,

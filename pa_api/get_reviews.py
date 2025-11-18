@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import text
 from extensions import db
+from models import Review
 
 # Create the blueprint
 review_endpoints= Blueprint('get_reviews', __name__)
