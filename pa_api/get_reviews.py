@@ -304,7 +304,7 @@ def search_reviews():
             params['provider'] = provider
 
         query += " ORDER BY r.place_name, rev.review_date DESC"
-
+        print("QUERY REVIEWS: " + text(query));
         result = db.session.execute(text(query), params)
         rows = result.fetchall()
 
@@ -379,6 +379,7 @@ def search_ratings():
             'keyword': f'%{keyword}%'  # Add wildcards for partial matching
         }
 
+        print("QUERY RATINGS: " + text(query));
         result = db.session.execute(text(query), params)
         rows = result.fetchall()
 
