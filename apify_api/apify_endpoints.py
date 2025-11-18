@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from flask import Blueprint, jsonify, json, request
 from functools import wraps
 from datetime import datetime, timezone
-from app import db
+from extensions import db
 import json
 from apify_client.errors import ApifyApiError
 
@@ -64,7 +64,51 @@ def waitforreviews():
         # Catch any other unexpected errors
         return f"An unexpected error occurred: {e}. An unexpected Apify API error occurred."
 
-@apify_endpoints.route('/apify/popdb')
+@apify_endpoints.route('/apify/one2db')
+def one2db():
+    if request.is_json:
+        try:
+            review=request.get_json()
+        except (Exception,):
+            return {"message": "Malformed request"}, 400
+    else:
+        return {"message": "Malformed request"}, 400
+
+    # validate this data...
+    google_maps_id = review.get("googleMapsPlaceId")
+    place_name = review.get("placeName","")
+    place_url = review.get("placeUrl","")
+    place_address = review.get("placeAddress","")
+    provider = review.get("provider","Bain")
+    review_text = review.get("reviewText","")
+    review_date = review.get("reviewDate", datetime.now().strftime("%Y-%m-%d"))
+    review_rating = review.get("reviewRating", None)
+    author_name = review.get("authorName","")
+
+    new_review = Review(
+        google_maps_id=google_maps_id,
+        place_name=place_name,
+        place_url=place_url,
+        place_address=place_address,
+        provider = provider,
+        review_text=review_text,
+        review_date=review_date if isinstance(review_date, datetime) else None,
+        review_rating=review_rating,
+        author_name=author_name,
+        ignore_for_quality=False,
+        ignore_for_rating=False,
+        ignore_for_insufficient=False,
+        selected_as_top_rating=False
+    )
+    db.session.add(new_review)
+    try:
+        db.session.commit()
+        return {"message": "Successfully added your Bain review to database"},201
+    except Exception as e:
+        db.session.rollback()
+        return {"message": f"Error adding your review to our database, detail: {e}"},200
+
+@apify_endpoints.route('/apify/popdb', methods=['POST'])
 def popdb():
     review_count = 0
     run_id = request.args.get('run')
@@ -83,6 +127,7 @@ def popdb():
             place_url = review.get("placeUrl","")
             place_address = review.get("placeAddress","")
             provider = review.get("provider","")
+            review_title= review.get("reviewTitle", "")
             review_text = review.get("reviewText","")
             review_date = review.get("reviewDate", None)
             review_rating = review.get("reviewRating", None)
@@ -126,6 +171,7 @@ class Review(db.Model):
     place_url = db.Column(db.String(255))
     place_address = db.Column(db.String(255))
     provider = db.Column(db.String(100))
+    review_title = db.Column(db.String(255))
     review_text = db.Column(db.Text)
     review_date = db.Column(db.DateTime)
     review_rating = db.Column(db.SmallInteger)  # TINYINT maps to SmallInteger
@@ -203,7 +249,8 @@ def apify_testpop():
         place_url = review.get("placeUrl","")
         place_address = review.get("placeAddress","")
         provider = review.get("provider","")
-        review_text = review.get("reviewText","")
+        review_title= review.get("reviewTitle","")
+        review_text = review.get("reviewText", "")
         review_date = review.get("reviewDate", None)
         review_rating = review.get("reviewRating", None)
         author_name = review.get("authorName","")
