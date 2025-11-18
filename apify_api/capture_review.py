@@ -1,28 +1,27 @@
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
+from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://username:password@localhost/your_database'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+capture_review = Blueprint('capture_review', __name__)
 
-# Define the model
 class ReviewDetails(db.Model):
-    __tablename__ = 'review_details'
+    __tablename__ = 'reviews'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     google_maps_id = db.Column(db.String(128), nullable=False)
+    provider = db.Column(db.String(100), nullable=True)
+    review_title = db.Column(db.String(255), nullable=True)
     review_text = db.Column(db.Text, nullable=True)
-    review_rating = db.Column(db.SmallInteger, nullable=True)  # tinyint
+    review_rating = db.Column(db.SmallInteger, nullable=True)
     author_name = db.Column(db.String(128), nullable=True)
 
 
-@app.route('/submit-review', methods=['POST'])
+@capture_review.route('/submit-review', methods=['POST'])
 def submit_review():
     try:
         # Extract data from form
         google_maps_id = request.form.get('google_maps_id', '').strip()
+        review_title = request.form.get('review_title', '').strip()
         review_text = request.form.get('review_text', '').strip()
         review_rating = request.form.get('review_rating', '').strip()
         author_name = request.form.get('author_name', '').strip()
@@ -36,15 +35,21 @@ def submit_review():
         elif len(google_maps_id) > 128:
             errors.append("google_maps_id must be 128 characters or less")
 
-        # Validate review_rating (optional, but must be 1-5 if provided)
+        # Validate review_rating (required for Bain reviews)
         rating_value = None
-        if review_rating:
+        if not review_rating:
+            errors.append("review_rating is required")
+        else:
             try:
                 rating_value = int(review_rating)
                 if rating_value < 1 or rating_value > 5:
                     errors.append("review_rating must be between 1 and 5")
             except ValueError:
                 errors.append("review_rating must be a valid integer")
+
+        # Validate review_title length
+        if review_title and len(review_title) > 255:
+            errors.append("review_title must be 255 characters or less")
 
         # Validate author_name length
         if author_name and len(author_name) > 128:
@@ -60,6 +65,8 @@ def submit_review():
         # Create new review record
         new_review = ReviewDetails(
             google_maps_id=google_maps_id,
+            provider='Bain',
+            review_title=review_title if review_title else None,
             review_text=review_text if review_text else None,
             review_rating=rating_value,
             author_name=author_name if author_name else None
@@ -69,6 +76,7 @@ def submit_review():
         db.session.add(new_review)
         db.session.commit()
 
+        # Call stored procedure to update bain_ratings
         try:
             db.session.execute(db.text("CALL makebainratings()"))
             db.session.commit()
@@ -96,7 +104,3 @@ def submit_review():
             'error': 'An unexpected error occurred',
             'details': str(e)
         }), 500
-
-
-if __name__ == '__main__':
-    app.run(debug=True)

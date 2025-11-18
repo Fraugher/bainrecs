@@ -23,9 +23,11 @@ def create_app():
     from apify_api.apify_endpoints import apify_endpoints
     # from apify_api.endpoints import yelp_endpoints
     from pa_api.get_reviews import review_endpoints
+    from pa_api.capture_review import capture_review
 
     app.register_blueprint(apify_endpoints, url_prefix='/apify')
     app.register_blueprint(review_endpoints, url_prefix='/reviews')
+    app.register_blueprint(capture_review, url_prefix='/reviews')
     # app.register_blueprint(yelp_endpoints)
 
     print("\n=== Registered Routes ===")
