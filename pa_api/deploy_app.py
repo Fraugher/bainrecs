@@ -22,14 +22,13 @@ def deploy():
                 digestmod=hashlib.sha256
             )
             expected_signature = 'sha256=' + mac.hexdigest()
-            print(f"Expected signature: {expected_signature}")
             print(f"Signatures match: {hmac.compare_digest(signature, expected_signature)}")
 
             if not hmac.compare_digest(signature, expected_signature):
                 return jsonify({'error': 'Invalid signature'}), 403
 
     try:
-        project_path = os.getenv('FILE_BASE')
+        project_path = os.getenv('FILE_ROOT')
         wsgi_path = os.getenv('PYTHONANYWHERE_WSGI_PATH')
 
         # Pull latest code
