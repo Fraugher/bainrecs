@@ -1,8 +1,9 @@
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
-from flask import Flask
+from flask import Flask, jsonify
 from extensions import db
+import subprocess
 
 load_dotenv()
 SQL_ALCHEMY_URI = os.getenv('SQL_ALCHEMY_URI')
@@ -12,23 +13,19 @@ def create_app():
     app = Flask(__name__)
     CORS(app)
 
-
     app.config["SQLALCHEMY_DATABASE_URI"] = SQL_ALCHEMY_URI
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 280}
 
-
     db.init_app(app)  # Initialize db with your Flask app
 
-    # Import and register your blueprints here
+    # Blueprints
     from apify_api.apify_endpoints import apify_endpoints
-    # from apify_api.endpoints import yelp_endpoints
     from pa_api.get_reviews import review_endpoints
     from pa_api.capture_review import capture_review
 
     app.register_blueprint(apify_endpoints, url_prefix='/apify')
     app.register_blueprint(review_endpoints, url_prefix='/reviews')
     app.register_blueprint(capture_review, url_prefix='/reviews')
-    # app.register_blueprint(yelp_endpoints)
 
     print("\n=== Registered Routes ===")
     for rule in app.url_map.iter_rules():
@@ -36,8 +33,18 @@ def create_app():
     print("========================\n")
 
     return app
-
 app = create_app()
+
+@app.route('/deploy', methods=['POST']) #for autodeploy on PythonAnywhere
+def deploy():
+    try:
+        # Pull latest code
+        subprocess.run(['git', 'pull'], cwd='/home/fraugher/bainrecs')
+        # Reload the web app (PythonAnywhere specific)
+        subprocess.run(['touch', '/var/www/fraugher_pythonanywhere_com_wsgi.py'])
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     with app.app_context():
