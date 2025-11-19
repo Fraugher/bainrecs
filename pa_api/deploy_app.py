@@ -13,8 +13,18 @@ GITHUB_WEBHOOK_SECRET = os.getenv('GITHUB_WEBHOOK_SECRET', '')
 @deploy_app.route('/deploy_app', methods=['POST'])
 def deploy():
     # Optional: Verify GitHub webhook signature
+    print("=== DEPLOY WEBHOOK RECEIVED ===")
+
+    # Debug logging
+    github_signature = request.headers.get('X-Hub-Signature-256')
+    print(f"GitHub signature: {github_signature}")
+    print(f"Secret from env: {GITHUB_WEBHOOK_SECRET}")
+    print(f"Secret length: {len(GITHUB_WEBHOOK_SECRET) if GITHUB_WEBHOOK_SECRET else 0}")
+
+
     if GITHUB_WEBHOOK_SECRET:
         signature = request.headers.get('X-Hub-Signature-256')
+
         if signature:
             mac = hmac.new(
                 GITHUB_WEBHOOK_SECRET.encode(),
@@ -22,6 +32,8 @@ def deploy():
                 digestmod=hashlib.sha256
             )
             expected_signature = 'sha256=' + mac.hexdigest()
+            print(f"Expected signature: {expected_signature}")
+            print(f"Signatures match: {hmac.compare_digest(signature, expected_signature)}")
 
             if not hmac.compare_digest(signature, expected_signature):
                 return jsonify({'error': 'Invalid signature'}), 403
