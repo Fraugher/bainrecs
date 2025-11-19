@@ -6,13 +6,10 @@ import os
 
 deploy_app = Blueprint('deploy_app', __name__)
 
-# Get secret from environment variable (optional, for security)
 GITHUB_WEBHOOK_SECRET = os.getenv('GITHUB_WEBHOOK_SECRET', '')
 
-
-@deploy_app.route('/deploy_app', methods=['POST'])
-def deploy():
-    # Optional: Verify GitHub webhook signature
+@deploy_app.route('/deploy-app', methods=['POST'])
+def deploy_app():
     print("=== DEPLOY WEBHOOK RECEIVED ===")
 
     if GITHUB_WEBHOOK_SECRET:
@@ -32,9 +29,8 @@ def deploy():
                 return jsonify({'error': 'Invalid signature'}), 403
 
     try:
-        # Update these paths for your setup
-        project_path = '/home/fraugher/bainrecs'  # TODO: Update this
-        wsgi_path = '/var/www/fraugher_pythonanywhere_com_wsgi.py'  # TODO: Update this
+        project_path = os.getenv('FILE_BASE')
+        wsgi_path = os.getenv('PYTHONANYWHERE_WSGI_PATH')
 
         # Pull latest code
         result = subprocess.run(

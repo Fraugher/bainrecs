@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import text
 from extensions import db
-from models import Review
 
 # Create the blueprint
 review_endpoints= Blueprint('get_reviews', __name__)
@@ -299,7 +298,6 @@ def search_reviews():
             'keyword': f'%{keyword}%'  # Add wildcards for partial matching
         }
 
-        # Add provider filter if specified
         if provider:
             query += " AND rev.provider = :provider"
             params['provider'] = provider
@@ -312,9 +310,9 @@ def search_reviews():
         # Group reviews by restaurant
         restaurants = {}
         for row in rows:
-            gm_id = row[0]
-            if gm_id not in restaurants:
-                restaurants[gm_id] = {
+            google_maps_id = row[0]
+            if google_maps_id not in restaurants:
+                restaurants[google_maps_id] = {
                     'google_maps_id': row[0],
                     'place_name': row[1],
                     'place_address': row[2],
@@ -323,7 +321,7 @@ def search_reviews():
 
             # Add review if it exists
             if row[3]:  # review id
-                restaurants[gm_id]['reviews'].append({
+                restaurants[google_maps_id]['reviews'].append({
                     'id': row[3],
                     'review_title': row[4],
                     'review_text': row[5],

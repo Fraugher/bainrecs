@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models import Review
@@ -7,11 +7,9 @@ capture_review = Blueprint('capture_review', __name__)
 
 @capture_review.route('/submit-review', methods=['POST'])
 def submit_review():
-    import traceback
     try:
         print("=== SUBMIT REVIEW CALLED ===")
         print(f"Form data: {request.form}")
-        # Extract data from form
         google_maps_id = request.form.get('google_maps_id', '').strip()
         print(f"google_maps_id: {google_maps_id}")
         place_name = request.form.get('place_name', '').strip()
@@ -46,22 +44,18 @@ def submit_review():
             except ValueError:
                 errors.append("review_rating must be a valid integer")
 
-        # Validate review_title length
         if review_title and len(review_title) > 255:
             errors.append("review_title must be 255 characters or less")
 
-        # Validate author_name length
         if author_name and len(author_name) > 128:
             errors.append("author_name must be 128 characters or less")
 
-        # If there are validation errors, return them
         if errors:
             return jsonify({
                 'success': False,
                 'errors': errors
             }), 400
 
-        # Create new review record
         new_review = Review(
             google_maps_id=google_maps_id,
             provider='Bain',
@@ -71,14 +65,12 @@ def submit_review():
             review_rating=rating_value,
             author_name=author_name if author_name else None
         )
-
-        # Insert into database
         db.session.add(new_review)
         db.session.commit()
 
-        # Call stored procedure to update bain_ratings
         try:
-            db.session.execute(db.text("CALL makebainratings()"))
+            # run stored procedure to aggregate this new rating with others
+            db.session.execute(db.text(current_app.config['DB_PROCEDURE_BAIN_RATING']))
             db.session.commit()
         except Exception as proc_error:
             # Log the error but don't fail the request since review was saved
@@ -100,9 +92,7 @@ def submit_review():
 
     except Exception as e:
         print(f"ERROR: {str(e)}")
-        print(f"TRACEBACK: {traceback.format_exc()}")
         return jsonify({
             'success': False,
             'error': str(e),
-            'traceback': traceback.format_exc()
         }), 500

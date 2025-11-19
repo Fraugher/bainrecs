@@ -1,0 +1,12 @@
+{
+  "keywords": ["upscale", "business", "quiet", "private dining"],
+  "location": "2 Bloor Street E,  Toronto, ON M4W 1A8, Canada",
+  "maxDistanceMeters": 10,
+  "checkNames": false,
+  "requireExactNameMatch": false,
+  "deeperCityScrape": false,
+  "maxReviewsPerPlaceAndProvider": 1,
+  "reviewsFromDate" : "2021-01-01",
+  "scrapeReviewPictures": false,
+  "scrapeReviewResponses": false
+}

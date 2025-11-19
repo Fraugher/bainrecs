@@ -1,20 +1,27 @@
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
-from flask import Flask, jsonify
+from flask import Flask
+import config
 from extensions import db
-import subprocess
+from config import DevelopmentConfig, ProductionConfig
+from pathlib import Path
 
-load_dotenv()
-SQL_ALCHEMY_URI = os.getenv('SQL_ALCHEMY_URI')
-PYTHONANYWHERE_API_KEY = os.getenv('PYTHONANYWHERE_API_KEY')
+project_root = Path(__file__).parent
+dotenv_path = project_root / '.env'
+load_dotenv(dotenv_path)
+
+# PYTHONANYWHERE_API_KEY = os.getenv('PYTHONANYWHERE_API_KEY')
 
 def create_app():
     app = Flask(__name__)
     CORS(app)
 
-    app.config["SQLALCHEMY_DATABASE_URI"] = SQL_ALCHEMY_URI
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 280}
+    env = config.Environment(os.getenv('FLASK_ENV'))
+    if env == config.Environment.DEVELOPMENT:
+        app.config.from_object(DevelopmentConfig)
+    else:
+        app.config.from_object(ProductionConfig)
 
     db.init_app(app)  # Initialize db with your Flask app
 
@@ -35,9 +42,9 @@ def create_app():
     print("========================\n")
 
     return app
-app = create_app()
 
 if __name__ == '__main__':
+    app = create_app()
     with app.app_context():
         db.create_all()  # Operations requiring app context
     app.run(debug=True)
