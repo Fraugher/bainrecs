@@ -22,10 +22,12 @@ def create_app():
     from apify_api.apify_endpoints import apify_endpoints
     from pa_api.get_reviews import review_endpoints
     from pa_api.capture_review import capture_review
+    from pa_api.deploy_app import deploy_app
 
     app.register_blueprint(apify_endpoints, url_prefix='/apify')
     app.register_blueprint(review_endpoints, url_prefix='/reviews')
     app.register_blueprint(capture_review, url_prefix='/reviews')
+    app.register_blueprint(deploy_app, url_prefix='/')
 
     print("\n=== Registered Routes ===")
     for rule in app.url_map.iter_rules():
@@ -34,17 +36,6 @@ def create_app():
 
     return app
 app = create_app()
-
-@app.route('/deploy', methods=['POST']) #for autodeploy on PythonAnywhere
-def deploy():
-    try:
-        # Pull latest code
-        subprocess.run(['git', 'pull'], cwd='/home/fraugher/bainrecs')
-        # Reload the web app (PythonAnywhere specific)
-        subprocess.run(['touch', '/var/www/fraugher_pythonanywhere_com_wsgi.py'])
-        return jsonify({'success': True}), 200
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     with app.app_context():
