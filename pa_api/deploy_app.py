@@ -15,13 +15,6 @@ def deploy():
     # Optional: Verify GitHub webhook signature
     print("=== DEPLOY WEBHOOK RECEIVED ===")
 
-    # Debug logging
-    github_signature = request.headers.get('X-Hub-Signature-256')
-    print(f"GitHub signature: {github_signature}")
-    print(f"Secret from env: {GITHUB_WEBHOOK_SECRET}")
-    print(f"Secret length: {len(GITHUB_WEBHOOK_SECRET) if GITHUB_WEBHOOK_SECRET else 0}")
-
-
     if GITHUB_WEBHOOK_SECRET:
         signature = request.headers.get('X-Hub-Signature-256')
 
