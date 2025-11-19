@@ -11,8 +11,6 @@ project_root = Path(__file__).parent
 dotenv_path = project_root / '.env'
 load_dotenv(dotenv_path)
 
-# PYTHONANYWHERE_API_KEY = os.getenv('PYTHONANYWHERE_API_KEY')
-
 def create_app():
     app = Flask(__name__)
     CORS(app)

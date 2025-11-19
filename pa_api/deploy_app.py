@@ -9,7 +9,7 @@ deploy_app = Blueprint('deploy_app', __name__)
 GITHUB_WEBHOOK_SECRET = os.getenv('GITHUB_WEBHOOK_SECRET', '')
 
 @deploy_app.route('/deploy-app', methods=['POST'])
-def deploy_app():
+def deploy():
     print("=== DEPLOY WEBHOOK RECEIVED ===")
 
     if GITHUB_WEBHOOK_SECRET:
