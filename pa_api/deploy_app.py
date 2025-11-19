@@ -30,7 +30,7 @@ def deploy():
     try:
         project_path = os.getenv('FILE_ROOT')
         wsgi_path = os.getenv('PYTHONANYWHERE_WSGI_PATH')
-
+        print("project root=", project_path)
         # Pull latest code
         result = subprocess.run(
             ['git', 'pull'],
