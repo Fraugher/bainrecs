@@ -40,7 +40,7 @@ def deploy():
 
     try:
         # Update these paths for your setup
-        project_path = '/home/fraugher/your-project-folder'  # TODO: Update this
+        project_path = '/home/fraugher/bainrecs'  # TODO: Update this
         wsgi_path = '/var/www/fraugher_pythonanywhere_com_wsgi.py'  # TODO: Update this
 
         # Pull latest code
