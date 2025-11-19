@@ -14,6 +14,8 @@ def submit_review():
         # Extract data from form
         google_maps_id = request.form.get('google_maps_id', '').strip()
         print(f"google_maps_id: {google_maps_id}")
+        place_name = request.form.get('place_name', '').strip()
+        print(f"place_name: {place_name}")
         review_title = request.form.get('review_title', '').strip()
         print(f"review_title: {review_title}")
         review_text = request.form.get('review_text', '').strip()
@@ -63,6 +65,7 @@ def submit_review():
         new_review = Review(
             google_maps_id=google_maps_id,
             provider='Bain',
+            place_name=place_name,
             review_title=review_title if review_title else None,
             review_text=review_text if review_text else None,
             review_rating=rating_value,
