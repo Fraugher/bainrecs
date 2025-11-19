@@ -3,7 +3,6 @@ from app import create_app
 from extensions import db
 import os
 
-
 @pytest.fixture(scope='function')
 def app():
     """Create and configure a test app instance."""

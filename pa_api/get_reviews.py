@@ -8,17 +8,16 @@ review_endpoints= Blueprint('get_reviews', __name__)
 def load_query(filename):
     with open(f'queries/{filename}', 'r') as f:
         return f.read()
-def get_sql_from_file():
-    query = load_query('get_all_reviews.sql')
+# def get_sql_from_file():
+    # query = load_query('get_all_reviews.sql')
 
-# 1. GET all restaurants with their reviews
+# get all restaurants with their reviews
 @review_endpoints.route('/reviews', methods=['GET'])
 def get_all_reviews():
     try:
         restaurant_type = request.args.get('restaurant_type', 'all')
         provider = request.args.get('provider', None)
 
-        # Build query
         query = """
                 SELECT r.google_maps_id, \
                        r.place_name, \
@@ -50,9 +49,9 @@ def get_all_reviews():
         # Group reviews by restaurant
         restaurants = {}
         for row in rows:
-            gm_id = row[0]
-            if gm_id not in restaurants:
-                restaurants[gm_id] = {
+            google_maps_id = row[0]
+            if google_maps_id not in restaurants:
+                restaurants[google_maps_id] = {
                     'google_maps_id': row[0],
                     'place_name': row[1],
                     'place_address': row[2],
@@ -61,7 +60,7 @@ def get_all_reviews():
 
             # Add review if it exists
             if row[3]:  # review id
-                restaurants[gm_id]['reviews'].append({
+                restaurants[google_maps_id]['reviews'].append({
                     'id': row[3],
                     'review_title': row[4],
                     'review_text': row[5],
