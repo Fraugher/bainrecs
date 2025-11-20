@@ -68,29 +68,28 @@ GITHUB_WEBHOOK_SECRET=your_webhook_secret
 
 5. Database Setup
 
-The application uses a MySQL database with a primary `reviews` table and several derived tables created by stored procedures.
+   The application uses a MySQL database with a primary `reviews` table and several derived tables created by stored procedures.
 
-### Building the Database
+   ### Building the Database
 
-To create the complete database structure from scratch, use the provided build script:
+   To create the complete database structure from scratch, use the provided build script:
 
-**From terminal:**
-```bash
-mysql -h fraugher.mysql.pythonanywhere-services.com -u fraugher -p fraugher$toronto_restaurants < build_database.sql
-```
+   **From terminal:**
+   ```bash
+   mysql -h fraugher.mysql.pythonanywhere-services.com -u fraugher -p fraugher$toronto_restaurants < build_database.sql
+   ```
 
-**From MySQL console:**
-```sql
-source /path/to/build_database.sql
-```
+   **From MySQL console:**
+   ```sql
+   source /path/to/build_database.sql
+   ```
 
-The build script (`build_database.sql`) contains:
-- Complete table definitions
-- All stored procedures (`makerestaurants`, `makeratings`, `makebainratings`, `cleardb`)
-- Proper drop/create order for rebuilding from scratch
+   The build script (`build_database.sql`) contains:
+    - Complete table definitions
+    - All stored procedures (`makerestaurants`, `makeratings`, `makebainratings`, `cleardb`)
+    - Proper drop/create order for rebuilding from scratch
 
-See comments in `build_database.sql` for detailed information about the database structure and procedures.
-
+   See comments in `build_database.sql` for detailed information about the database structure and procedures.
 
 
 6. Run the application:
