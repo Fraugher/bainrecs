@@ -1,6 +1,6 @@
-# Bainrecs - Backend API
+# Bainrecs - Bain Restaurant Recommendations Backend API
 
-Restaurant review aggregation and management system for Bain & Company.
+Restaurant review aggregation for Bain & Company Toronto.
 
 ## Overview
 
@@ -10,13 +10,12 @@ Bainrecs provides two main API collections:
 - Integrates with Apify's Restaurant Review Aggregator
 - Collects reviews from multiple sources (Google, TripAdvisor, etc.)
 - Populates and aggregates data in MySQL database
-- Handles bulk review processing
 
 ### 2. Review Access & Submission (`/reviews`)
 - Search and filter restaurant reviews
 - Retrieve ratings and aggregated data
 - Submit Bain user reviews
-- Query by restaurant, location, or rating
+- Query by type of restaurant or keyword
 
 ## Tech Stack
 
@@ -66,7 +65,35 @@ FILE_BASE_PRODUCTION=
 GITHUB_WEBHOOK_SECRET=your_webhook_secret
 ```
 
-5. Run the application:
+
+5. Database Setup
+
+The application uses a MySQL database with a primary `reviews` table and several derived tables created by stored procedures.
+
+### Building the Database
+
+To create the complete database structure from scratch, use the provided build script:
+
+**From terminal:**
+```bash
+mysql -h fraugher.mysql.pythonanywhere-services.com -u fraugher -p fraugher$toronto_restaurants < build_database.sql
+```
+
+**From MySQL console:**
+```sql
+source /path/to/build_database.sql
+```
+
+The build script (`build_database.sql`) contains:
+- Complete table definitions
+- All stored procedures (`makerestaurants`, `makeratings`, `makebainratings`, `cleardb`)
+- Proper drop/create order for rebuilding from scratch
+
+See comments in `build_database.sql` for detailed information about the database structure and procedures.
+
+
+
+6. Run the application:
 ```bash
 python app.py
 ```
@@ -93,17 +120,16 @@ See [DOCKER.md](DOCKER.md) for detailed Docker instructions.
 ## API Endpoints
 
 ### Apify Collection Endpoints
-- `GET /apify/start-run` - Start Apify review collection
-- `GET /apify/wait-run` - Wait for collection completion
-- `GET /apify/one2db` - Process single run to database
-- `POST /apify/pop-db` - Populate database with reviews
+- `GET /apify/start-run` - Start Apify RUN -> review collection
+- `GET /apify/wait-run` - Wait/monitor for RUN collection completion
+- `POST /apify/pop-db` - requires runId Populate database with reviews from Apify RUN
 - `GET /apify/health` - Health check
 
 ### Review Access Endpoints
-- `GET /reviews/reviews` - Get all reviews
-- `GET /reviews/ratings` - Get all ratings
-- `GET /reviews/reviews/<google_maps_id>` - Get restaurant reviews
-- `GET /reviews/ratings/<google_maps_id>` - Get restaurant ratings
+- `GET /reviews/reviews` - Get all reviews for all restaurants
+- `GET /reviews/ratings` - Get all ratings for all restaurants
+- `GET /reviews/reviews/<google_maps_id>` - Get specific restaurant reviews
+- `GET /reviews/ratings/<google_maps_id>` - Get specific restaurant ratings
 - `GET /reviews/search_reviews` - Search reviews with filters
 - `GET /reviews/search_ratings` - Search ratings with filters
 - `POST /reviews/submit-review` - Submit a Bain user review
@@ -134,10 +160,3 @@ bainrecs/
 ├── Dockerfile           # Docker configuration
 └── .dockerignore        # Docker ignore patterns
 ```
-
-## Contributing
-
-1. Create a feature branch
-2. Make your changes
-3. Run tests
-4. Submit a pull request

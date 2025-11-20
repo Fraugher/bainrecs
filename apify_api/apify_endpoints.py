@@ -61,55 +61,11 @@ def wait_run():
     except Exception as e:
         return f"An unexpected error occurred: {e}. An unexpected Apify API error occurred."
 
-@apify_endpoints.route('/one2db')
-def one2db():
-    if request.is_json:
-        try:
-            review=request.get_json()
-        except (Exception,):
-            return {"message": "Malformed request"}, 400
-    else:
-        return {"message": "Malformed request"}, 400
-
-    # validate this data...
-    google_maps_id = review.get("googleMapsPlaceId")
-    place_name = review.get("placeName","")
-    place_url = review.get("placeUrl","")
-    place_address = review.get("placeAddress","")
-    provider = review.get("provider","Bain")
-    review_text = review.get("reviewText","")
-    review_date = review.get("reviewDate", datetime.now().strftime("%Y-%m-%d"))
-    review_rating = review.get("reviewRating", None)
-    author_name = review.get("authorName","")
-
-    new_review = Review(
-        google_maps_id=google_maps_id,
-        place_name=place_name,
-        place_url=place_url,
-        place_address=place_address,
-        provider = provider,
-        review_text=review_text,
-        review_date=review_date if isinstance(review_date, datetime) else None,
-        review_rating=review_rating,
-        author_name=author_name,
-        ignore_for_quality=False,
-        ignore_for_rating=False,
-        ignore_for_insufficient=False,
-        selected_as_top_rating=False
-    )
-    db.session.add(new_review)
-    try:
-        db.session.commit()
-        return {"message": "Successfully added your Bain review to database"},201
-    except Exception as e:
-        db.session.rollback()
-        return {"message": f"Error adding your review to our database, detail: {e}"},200
-
 @apify_endpoints.route('/pop-db', methods=['POST'])
 @require_apify_api_key
 def pop_db():
     review_count = 0
-    run_id = request.args.get('run')
+    run_id = request.args.get('runId')
     if run_id is None:
         return "Bad Request"
     client = ApifyClient(current_app.config['APIFY_API_KEY'])
@@ -156,6 +112,21 @@ def pop_db():
     else:
         msg= f"Error retrieving run with ID '{run_id}'."
     return msg
+
+@apify_endpoints.route('/clean-db', methods=['POST'])
+@require_apify_api_key
+def clean_db():
+    try:
+        db.session.execute(db.text(current_app.config['DB_PROCEDURE_CLEAN_DB']))
+        db.session.commit()
+        msg = f"Successfully cleaned the database"
+    except Exception as e:
+        db.session.rollback()
+        msg=f"Error cleaning the database.: {e}"
+    else:
+        msg= f"Error cleaning the database."
+    return msg
+
 
 @apify_endpoints.route('/test-pop')
 def test_pop():
@@ -406,3 +377,48 @@ def health():
 #     debug_info += "</ul>"
 #
 #     return debug_info
+
+
+# @apify_endpoints.route('/one2db')
+# def one2db():
+#     if request.is_json:
+#         try:
+#             review=request.get_json()
+#         except (Exception,):
+#             return {"message": "Malformed request"}, 400
+#     else:
+#         return {"message": "Malformed request"}, 400
+#
+#     # validate this data...
+#     google_maps_id = review.get("googleMapsPlaceId")
+#     place_name = review.get("placeName","")
+#     place_url = review.get("placeUrl","")
+#     place_address = review.get("placeAddress","")
+#     provider = review.get("provider","Bain")
+#     review_text = review.get("reviewText","")
+#     review_date = review.get("reviewDate", datetime.now().strftime("%Y-%m-%d"))
+#     review_rating = review.get("reviewRating", None)
+#     author_name = review.get("authorName","")
+#
+#     new_review = Review(
+#         google_maps_id=google_maps_id,
+#         place_name=place_name,
+#         place_url=place_url,
+#         place_address=place_address,
+#         provider = provider,
+#         review_text=review_text,
+#         review_date=review_date if isinstance(review_date, datetime) else None,
+#         review_rating=review_rating,
+#         author_name=author_name,
+#         ignore_for_quality=False,
+#         ignore_for_rating=False,
+#         ignore_for_insufficient=False,
+#         selected_as_top_rating=False
+#     )
+#     db.session.add(new_review)
+#     try:
+#         db.session.commit()
+#         return {"message": "Successfully added your Bain review to database"},201
+#     except Exception as e:
+#         db.session.rollback()
+#         return {"message": f"Error adding your review to our database, detail: {e}"},200
