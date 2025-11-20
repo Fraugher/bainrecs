@@ -74,6 +74,9 @@ def wait_run():
 @apify_endpoints.route('/pop-db', methods=['GET', 'POST'])
 @require_apify_api_key
 def pop_db():
+    print(f"FILE_BASE config: '{current_app.config.get('FILE_BASE')}'")
+    print(f"Config keys: {list(current_app.config.keys())}")
+    
     review_count = 0
     if request.method == 'POST':
         run_id = request.json.get('runId') if request.is_json else None
