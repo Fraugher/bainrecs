@@ -23,7 +23,7 @@ def require_apify_api_key(f): #decorator to ensure api key
 def clean_database():
     """Helper function to clean the database"""
     try:
-        db.session.execute(db.text(current_app.config['DB_PROCEDURE_CLEAN_DB']))
+        db.session.execute(db.text(current_app.config['DB_PROCEDURE_CLEAR_DB']))
         db.session.commit()
         return True, "Successfully cleaned the database"
     except Exception as e:
