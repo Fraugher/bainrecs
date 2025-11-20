@@ -20,6 +20,16 @@ def require_apify_api_key(f): #decorator to ensure api key
         return f(*args, **kwargs)
     return decorated_function
 
+def clean_database():
+    """Helper function to clean the database"""
+    try:
+        db.session.execute(db.text(current_app.config['DB_PROCEDURE_CLEAN_DB']))
+        db.session.commit()
+        return True, "Successfully cleaned the database"
+    except Exception as e:
+        db.session.rollback()
+        return False, f"Error cleaning the database: {e}"
+
 @apify_endpoints.route('/start-run')
 @require_apify_api_key
 def start_run():
@@ -73,6 +83,12 @@ def pop_db():
     run_info = run_client.get()
     if run_info['status'] != "SUCCEEDED":
         return f"Data is not ready for run with ID {run_id}, run status is '{run_info['status']}'"
+
+    # Clean out database first
+    success, clean_msg = clean_database()
+    if not success:
+        return clean_msg
+
     if run_info and 'defaultDatasetId' in run_info and run_info['defaultDatasetId']:  # this is all apify protocol
         for review in client.dataset(run_info["defaultDatasetId"]).iterate_items():
             google_maps_id = review.get("googleMapsPlaceId")
@@ -116,17 +132,8 @@ def pop_db():
 @apify_endpoints.route('/clean-db', methods=['POST'])
 @require_apify_api_key
 def clean_db():
-    try:
-        db.session.execute(db.text(current_app.config['DB_PROCEDURE_CLEAN_DB']))
-        db.session.commit()
-        msg = f"Successfully cleaned the database"
-    except Exception as e:
-        db.session.rollback()
-        msg=f"Error cleaning the database.: {e}"
-    else:
-        msg= f"Error cleaning the database."
+    success, msg = clean_database()
     return msg
-
 
 @apify_endpoints.route('/test-pop')
 def test_pop():
