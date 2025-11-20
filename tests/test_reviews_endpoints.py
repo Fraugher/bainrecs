@@ -1,8 +1,8 @@
 import json
 
 def test_get_all_reviews(client):
-    """Test GET /api/reviews endpoint."""
-    response = client.get('/api/reviews?restaurant_type=all')
+    """Test GET /reviews/reviews endpoint."""
+    response = client.get('/reviews/reviews?restaurant_type=all')
 
     assert response.status_code == 200
     data = json.loads(response.data)
@@ -13,8 +13,8 @@ def test_get_all_reviews(client):
 
 
 def test_get_all_reviews_with_provider_filter(client):
-    """Test GET /api/reviews with provider filter."""
-    response = client.get('/api/reviews?restaurant_type=all&provider=Bain')
+    """Test GET /reviews/reviews with provider filter."""
+    response = client.get('/reviews/reviews?restaurant_type=all&provider=Bain')
 
     assert response.status_code == 200
     data = json.loads(response.data)
@@ -27,8 +27,8 @@ def test_get_all_reviews_with_provider_filter(client):
 
 
 def test_get_all_ratings(client):
-    """Test GET /api/ratings endpoint."""
-    response = client.get('/api/ratings?restaurant_type=all')
+    """Test GET /reviews/ratings endpoint."""
+    response = client.get('/reviews/ratings?restaurant_type=all')
 
     assert response.status_code == 200
     data = json.loads(response.data)
@@ -47,8 +47,8 @@ def test_get_all_ratings(client):
 
 
 def test_get_restaurant_reviews(client):
-    """Test GET /api/reviews/<google_maps_id> endpoint."""
-    response = client.get('/api/reviews/place_1')
+    """Test GET /reviews/reviews/<google_maps_id> endpoint."""
+    response = client.get('/reviews/reviews/place_1')
 
     assert response.status_code == 200
     data = json.loads(response.data)
@@ -60,8 +60,8 @@ def test_get_restaurant_reviews(client):
 
 
 def test_get_restaurant_reviews_with_provider(client):
-    """Test GET /api/reviews/<google_maps_id> with provider filter."""
-    response = client.get('/api/reviews/place_1?provider=Bain')
+    """Test GET /reviews/reviews/<google_maps_id> with provider filter."""
+    response = client.get('/reviews/reviews/place_1?provider=Bain')
 
     assert response.status_code == 200
     data = json.loads(response.data)
@@ -72,8 +72,8 @@ def test_get_restaurant_reviews_with_provider(client):
 
 
 def test_get_restaurant_reviews_not_found(client):
-    """Test GET /api/reviews/<google_maps_id> with non-existent ID."""
-    response = client.get('/api/reviews/nonexistent_id')
+    """Test GET /reviews/reviews/<google_maps_id> with non-existent ID."""
+    response = client.get('/reviews/reviews/nonexistent_id')
 
     assert response.status_code == 404
     data = json.loads(response.data)
@@ -83,8 +83,8 @@ def test_get_restaurant_reviews_not_found(client):
 
 
 def test_get_restaurant_ratings(client):
-    """Test GET /api/ratings/<google_maps_id> endpoint."""
-    response = client.get('/api/ratings/place_1')
+    """Test GET /reviews/ratings/<google_maps_id> endpoint."""
+    response = client.get('/reviews/ratings/place_1')
 
     assert response.status_code == 200
     data = json.loads(response.data)
@@ -98,8 +98,8 @@ def test_get_restaurant_ratings(client):
 
 
 def test_get_restaurant_ratings_not_found(client):
-    """Test GET /api/ratings/<google_maps_id> with non-existent ID."""
-    response = client.get('/api/ratings/nonexistent_id')
+    """Test GET /reviews/ratings/<google_maps_id> with non-existent ID."""
+    response = client.get('/reviews/ratings/nonexistent_id')
 
     assert response.status_code == 404
     data = json.loads(response.data)
@@ -110,7 +110,7 @@ def test_get_restaurant_ratings_not_found(client):
 
 def test_restaurant_with_no_bain_ratings(client):
     """Test restaurant that has overall ratings but no Bain ratings."""
-    response = client.get('/api/ratings/place_3')
+    response = client.get('/reviews/ratings/place_3')
 
     assert response.status_code == 200
     data = json.loads(response.data)

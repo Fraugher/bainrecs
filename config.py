@@ -31,3 +31,5 @@ class ProductionConfig(Config):
 class TestingConfig(Config):
     TESTING = True
     FILE_BASE = '/tmp/test_files/'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # ✅ In-memory DB
+    SQLALCHEMY_TRACK_MODIFICATIONS = False

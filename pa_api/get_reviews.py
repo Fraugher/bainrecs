@@ -46,7 +46,6 @@ def get_all_reviews():
         result = db.session.execute(text(query), params)
         rows = result.fetchall()
 
-        # Group reviews by restaurant
         restaurants = {}
         for row in rows:
             google_maps_id = row[0]
@@ -58,7 +57,6 @@ def get_all_reviews():
                     'reviews': []
                 }
 
-            # Add review if it exists
             if row[3]:  # review id
                 restaurants[google_maps_id]['reviews'].append({
                     'id': row[3],

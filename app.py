@@ -11,16 +11,36 @@ project_root = Path(__file__).parent
 dotenv_path = project_root / '.env'
 load_dotenv(dotenv_path)
 
-def create_app():
+def create_app(config_object=None):
     app = Flask(__name__)
     CORS(app)
 
-    env = config.Environment(os.getenv('FLASK_ENV'))
-    if env == config.Environment.DEVELOPMENT:
-        app.config.from_object(DevelopmentConfig)
-    else:
-        app.config.from_object(ProductionConfig)
+    env = config.Environment(os.getenv('FLASK_ENV', 'development'))
 
+    if config_object:
+        app.config.from_object(config_object)
+    else:
+        if env == config.Environment.DEVELOPMENT:
+            app.config.from_object(DevelopmentConfig)
+        else:
+            app.config.from_object(ProductionConfig)
+
+    def create_app(config_object=None):
+        app = Flask(__name__)
+        CORS(app)
+
+        env = config.Environment(os.getenv('FLASK_ENV', 'development'))
+
+        if config_object:
+            app.config.from_object(config_object)
+        else:
+            if env == config.Environment.DEVELOPMENT:
+                app.config.from_object(DevelopmentConfig)
+            else:
+                app.config.from_object(ProductionConfig)
+
+        # ... rest of setup
+        return app
     db.init_app(app)  # Initialize db with your Flask app
 
     # Blueprints
