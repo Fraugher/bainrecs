@@ -71,13 +71,17 @@ def wait_run():
     except Exception as e:
         return f"An unexpected error occurred: {e}. An unexpected Apify API error occurred."
 
-@apify_endpoints.route('/pop-db', methods=['POST'])
+@apify_endpoints.route('/pop-db', methods=['GET', 'POST'])
 @require_apify_api_key
 def pop_db():
     review_count = 0
-    run_id = request.args.get('runId')
+    if request.method == 'POST':
+        run_id = request.json.get('runId') if request.is_json else None
+    else:
+        run_id = request.args.get('runId')
+
     if run_id is None:
-        return "Bad Request"
+        return "Bad Request: runId parameter required"
     client = ApifyClient(current_app.config['APIFY_API_KEY'])
     run_client = client.run(run_id)
     run_info = run_client.get()
