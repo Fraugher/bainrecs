@@ -4,7 +4,7 @@ from functools import wraps
 from datetime import datetime
 from extensions import db
 import json
-from models import Review
+from models import Review, Restaurant
 from apify_client.errors import ApifyApiError
 
 apify_endpoints = Blueprint('apify_endpoints', __name__)
@@ -126,13 +126,51 @@ def pop_db():
         try:
             db.session.commit()
             db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RATINGS']))
-            type_file_path = current_app.config['FILE_BASE'] + 'json/apify_run_type.json'
-            with open(type_file_path, 'r') as f: # this is a hack for now to get different types like Chinese, Italian
-                run_type = json.load(f)
-                restaurant_type = run_type.get('restaurant_type', 'all')
-            db.session.execute(db.text(f"CALL makerestaurants('{restaurant_type}')"))
+            db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RESTAURANTS']))
             db.session.commit()
             msg=f"Successfully added {review_count} reviews to database"
+        except Exception as e:
+            db.session.rollback()
+            msg=f"Error adding reviews: {e}"
+    else:
+        msg= f"Error retrieving run with ID '{run_id}'."
+    return msg
+
+@apify_endpoints.route('/pop-type', methods=['GET', 'POST'])
+@require_apify_api_key
+def pop_type():
+    if request.method == 'POST':
+        run_id = request.json.get('runId') if request.is_json else None
+    else:
+        run_id = request.args.get('runId')
+
+    if run_id is None:
+        return "Bad Request: runId parameter required"
+    client = ApifyClient(current_app.config['APIFY_API_KEY'])
+    run_client = client.run(run_id)
+    run_info = run_client.get()
+    if run_info['status'] != "SUCCEEDED":
+        return f"Data is not ready for run with ID {run_id}, run status is '{run_info['status']}'"
+    type_file_path = current_app.config['FILE_BASE'] + 'json/apify_run_type.json'
+    with open(type_file_path, 'r') as f:  # this is a hack for now to get different types like Chinese, Italian
+        run_type = json.load(f)
+        restaurant_type = run_type.get('restaurant_type', 'all')
+
+    if run_info and 'defaultDatasetId' in run_info and run_info['defaultDatasetId']:  # this is all apify protocol
+        for review in client.dataset(run_info["defaultDatasetId"]).iterate_items():
+            google_maps_id = review.get("googleMapsPlaceId")
+            place_name = review.get("placeName","")
+            place_address = review.get("placeAddress","")
+            new_restaurant_with_type = Restaurant(
+                google_maps_id=google_maps_id,
+                place_name=place_name,
+                place_address=place_address,
+                restaurant_type=restaurant_type,
+            )
+            db.session.add(new_restaurant_with_type)
+        try:
+            db.session.commit()
+            msg=f"Successfully added restaurant types to database"
         except Exception as e:
             db.session.rollback()
             msg=f"Error adding reviews: {e}"

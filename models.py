@@ -25,3 +25,16 @@ class Review(db.Model):
 
     def __repr__(self):
         return f'<Review {self.id}: {self.place_name} - {self.review_rating}/5>'
+
+class Restaurant(db.Model):
+    __tablename__ = 'restaurants'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    google_maps_id = db.Column(db.String(128))
+    place_name = db.Column(db.String(255), nullable=False)
+    place_address = db.Column(db.String(255))
+    restaurant_type = db.Column(db.String(50))
+
+    def __repr__(self):
+        return f'<Restaurant {self.id}: {self.place_name} ({self.restaurant_type})>'
