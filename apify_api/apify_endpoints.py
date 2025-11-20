@@ -124,6 +124,7 @@ def pop_db():
             )
             db.session.add(new_review)
         try:
+            db.session.commit()
             db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RATINGS']))
             db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RESTAURANTS']))
             db.session.commit()
