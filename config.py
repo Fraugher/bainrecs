@@ -19,6 +19,7 @@ class Config:
     APIFY_API_KEY = os.getenv('APIFY_API_KEY')
     APIFY_RESTAURANT_REVIEW_URI = os.getenv('APIFY_RESTAURANT_REVIEW_URI')
     DB_PROCEDURE_BAIN_RATING = os.getenv('DB_PROCEDURE_BAIN_RATING')
+    DB_PROCEDURE_CLEAN_DB = os.getenv('DB_PROCEDURE_CLEAN_DB')
 
 class DevelopmentConfig(Config):
     DEBUG = True
