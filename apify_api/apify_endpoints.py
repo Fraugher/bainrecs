@@ -126,7 +126,11 @@ def pop_db():
         try:
             db.session.commit()
             db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RATINGS']))
-            db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RESTAURANTS']))
+            type_file_path = current_app.config['FILE_BASE'] + 'json/apify_run_type.json'
+            with open(type_file_path, 'r') as f: # this is a hack for now to get different types like Chinese, Italian
+                run_type = json.load(f)
+                restaurant_type = run_type.get('restaurant_type', 'all')
+            db.session.execute(db.text(f"CALL makerestaurants('{restaurant_type}')"))
             db.session.commit()
             msg=f"Successfully added {review_count} reviews to database"
         except Exception as e:
