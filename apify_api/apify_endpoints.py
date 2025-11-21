@@ -234,7 +234,7 @@ def pop_type():
     if run_info['status'] != "SUCCEEDED":
         return f"Data is not ready for run with ID {run_id}, run status is '{run_info['status']}'"
     # a run type is a run for a particular type of restaurant like Italian, Japanese, American, etc.
-    type_file_path = current_app.config['FILE_BASE'] + 'json/apify_run_for_type_inputs.json'
+    type_file_path = current_app.config['FILE_BASE'] + 'json/apify_run_for_types_inputs.json'
     with open(type_file_path, 'r') as f:  # this is a hack for now to get different types like Chinese, Italian
         run_type = json.load(f)
         restaurant_type = run_type.get('restaurant_type', 'all')
