@@ -13,33 +13,43 @@ def load_query(filename):
 
 # get all restaurants with their reviews
 @review_endpoints.route('/reviews', methods=['GET'])
+@review_endpoints.route('/reviews', methods=['GET'])
 def get_all_reviews():
     try:
         restaurant_type = request.args.get('restaurant_type', 'all')
         provider = request.args.get('provider', None)
 
         query = """
-                SELECT r.google_maps_id, \
-                       r.place_name, \
-                       r.place_address, \
-                       rev.id, \
-                       rev.review_title, \
-                       rev.review_text, \
-                       rev.review_date, \
-                       rev.review_rating, \
-                       rev.author_name, \
+                SELECT r.google_maps_id, 
+                       r.place_name, 
+                       r.place_address, 
+                       rev.id, 
+                       rev.review_title, 
+                       rev.review_text, 
+                       rev.review_date, 
+                       rev.review_rating, 
+                       rev.author_name, 
                        rev.provider
                 FROM restaurants r
                          LEFT JOIN reviews rev ON r.google_maps_id = rev.google_maps_id
-                WHERE r.restaurant_type = :restaurant_type \
                 """
 
-        params = {'restaurant_type': restaurant_type}
+        params = {}
+        where_clauses = []
+
+        # Add restaurant_type filter if not 'all'
+        if restaurant_type != 'all':
+            where_clauses.append("r.restaurant_type = :restaurant_type")
+            params['restaurant_type'] = restaurant_type
 
         # Add provider filter if specified
         if provider:
-            query += " AND rev.provider = :provider"
+            where_clauses.append("rev.provider = :provider")
             params['provider'] = provider
+
+        # Build WHERE clause if we have any conditions
+        if where_clauses:
+            query += " WHERE " + " AND ".join(where_clauses)
 
         query += " ORDER BY r.place_name, rev.review_date DESC"
 
@@ -87,21 +97,32 @@ def get_all_ratings():
         restaurant_type = request.args.get('restaurant_type', 'all')
 
         query = """
-                SELECT r.google_maps_id, \
-                       r.place_name, \
-                       r.place_address, \
-                       rat.ratings_count, \
-                       rat.ratings_avg, \
-                       brat.ratings_count as bain_ratings_count, \
-                       brat.ratings_avg   as bain_ratings_avg
+                SELECT DISTINCT r.google_maps_id,
+                                MAX(r.place_name)    as place_name,
+                                MAX(r.place_address) as place_address,
+                                rat.ratings_count,
+                                rat.ratings_avg,
+                                brat.ratings_count   as bain_ratings_count,
+                                brat.ratings_avg     as bain_ratings_avg
                 FROM restaurants r
                          LEFT JOIN ratings rat ON r.google_maps_id = rat.google_maps_id
-                         LEFT JOIN bain_ratings brat ON r.google_maps_id = brat.google_maps_id
-                WHERE r.restaurant_type = :restaurant_type
-                ORDER BY r.place_name \
+                         LEFT JOIN bain_ratings brat ON r.google_maps_id = brat.google_maps_id \
                 """
 
-        result = db.session.execute(text(query), {'restaurant_type': restaurant_type})
+        params = {}
+
+        # Only add WHERE clause if not 'all'
+        if restaurant_type != 'all':
+            query += " WHERE r.restaurant_type = :restaurant_type"
+            params['restaurant_type'] = restaurant_type
+
+        query += """
+                    GROUP BY r.google_maps_id, rat.ratings_count, rat.ratings_avg, 
+                             brat.ratings_count, brat.ratings_avg
+                    ORDER BY place_name
+                    """
+
+        result = db.session.execute(text(query), params)
         rows = result.fetchall()
 
         restaurants = []
