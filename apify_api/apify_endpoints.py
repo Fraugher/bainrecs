@@ -154,6 +154,68 @@ def pop_db():
         msg= f"Error retrieving run with ID '{run_id}'."
     return msg
 
+@apify_endpoints.route('/pop-reviews-only', methods=['GET', 'POST'])
+@require_apify_api_key
+def pop_reviews_only    ():
+    review_count = 0
+    if request.method == 'POST':
+        run_id = request.json.get('runId') if request.is_json else None
+    else:
+        run_id = request.args.get('runId')
+
+    if run_id is None:
+        return "Bad Request: runId parameter required"
+    client = ApifyClient(current_app.config['APIFY_API_KEY'])
+    run_client = client.run(run_id)
+    run_info = run_client.get()
+    if run_info['status'] != "SUCCEEDED":
+        return f"Data is not ready for run with ID {run_id}, run status is '{run_info['status']}'"
+
+    if run_info and 'defaultDatasetId' in run_info and run_info['defaultDatasetId']:  # this is all apify protocol
+        for review in client.dataset(run_info["defaultDatasetId"]).iterate_items():
+            google_maps_id = review.get("googleMapsPlaceId")
+            place_name = review.get("placeName","")
+            place_url = review.get("placeUrl","")
+            place_address = review.get("placeAddress","")
+            provider = review.get("provider","")
+            review_title= review.get("reviewTitle", "")
+            review_text = review.get("reviewText","")
+            review_date = review.get("reviewDate", None)
+            review_rating = review.get("reviewRating", None)
+            author_name = review.get("authorName","")
+            review_count += 1
+            new_review = Review(
+                google_maps_id=google_maps_id,
+                place_name=place_name,
+                place_url=place_url,
+                place_address=place_address,
+                provider = provider,
+                review_title=review_title,
+                review_text=review_text,
+                review_date=review_date if isinstance(review_date, datetime) else None,
+                review_rating=review_rating,
+                author_name=author_name,
+                ignore_for_quality=False,
+                ignore_for_rating=False,
+                ignore_for_insufficient=False,
+                selected_as_top_rating=False
+            )
+            db.session.add(new_review)
+        try:
+            db.session.commit()
+            db.session.expire_all()
+            db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RATINGS']))
+            db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RESTAURANTS']))
+            db.session.commit()
+            msg=f"Successfully added {review_count} reviews to database"
+        except Exception as e:
+            db.session.rollback()
+            msg=f"Error adding reviews: {e}"
+    else:
+        msg= f"Error retrieving run with ID '{run_id}'."
+    return msg
+
+
 @apify_endpoints.route('/pop-type', methods=['GET', 'POST'])
 @require_apify_api_key
 def pop_type():
