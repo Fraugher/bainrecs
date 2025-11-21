@@ -143,6 +143,8 @@ def pop_db():
 @apify_endpoints.route('/pop-type', methods=['GET', 'POST'])
 @require_apify_api_key
 def pop_type():
+    added_count = 0
+    skipped_count = 0
     if request.method == 'POST':
         run_id = request.json.get('runId') if request.is_json else None
     else:
@@ -166,22 +168,42 @@ def pop_type():
             google_maps_id = review.get("googleMapsPlaceId")
             place_name = review.get("placeName","")
             place_address = review.get("placeAddress","")
-            new_restaurant_with_type = Restaurant(
+
+            # Check if this combination already exists
+            existing = Restaurant.query.filter_by(
                 google_maps_id=google_maps_id,
-                place_name=place_name,
-                place_address=place_address,
-                restaurant_type=restaurant_type,
-            )
-            db.session.add(new_restaurant_with_type)
-            # print(f"ADDING RESTAIRANT WITH TYPE: {restaurant_type}")
-            # print(f" with place name: {place_name}")
-            # print(f" with google_maps_id: {google_maps_id}")
+                restaurant_type=restaurant_type
+            ).first()
+
+            if not existing:
+                new_restaurant_with_type = Restaurant(
+                    google_maps_id=google_maps_id,
+                    place_name=place_name,
+                    place_address=place_address,
+                    restaurant_type=restaurant_type,
+                )
+                db.session.add(new_restaurant_with_type)
+                added_count += 1
+            else:
+                skipped_count += 1
+
+            # new_restaurant_with_type = Restaurant(
+            #     google_maps_id=google_maps_id,
+            #     place_name=place_name,
+            #     place_address=place_address,
+            #     restaurant_type=restaurant_type,
+            # )
+            # db.session.add(new_restaurant_with_type)
+            # # print(f"ADDING RESTAIRANT WITH TYPE: {restaurant_type}")
+            # # print(f" with place name: {place_name}")
+            # # print(f" with google_maps_id: {google_maps_id}")
         try:
             db.session.commit()
-            msg=f"Successfully added restaurant types to database"
-        except IntegrityError as e:
-            db.session.rollback()
-            msg = f"Some restaurants and types already existed (skipped duplicates)"
+            msg = f"Added {added_count} restaurants, skipped {skipped_count} duplicates"
+            #msg=f"Successfully added restaurant types to database"
+        # except IntegrityError as e:
+        #     db.session.rollback()
+        #     msg = f"Some restaurants and types already existed (skipped duplicates)"
         except Exception as e:
             db.session.rollback()
             msg=f"Error adding restaurant types : {e}"
