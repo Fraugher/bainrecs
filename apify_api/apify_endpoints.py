@@ -173,9 +173,9 @@ def pop_type():
                 restaurant_type=restaurant_type,
             )
             db.session.add(new_restaurant_with_type)
-            print(f"ADDING RESTAIRANT WITH TYPE: {restaurant_type}")
-            print(f" with place name: {place_name}")
-            print(f" with google_maps_id: {google_maps_id}")
+            # print(f"ADDING RESTAIRANT WITH TYPE: {restaurant_type}")
+            # print(f" with place name: {place_name}")
+            # print(f" with google_maps_id: {google_maps_id}")
         try:
             db.session.commit()
             msg=f"Successfully added restaurant types to database"
