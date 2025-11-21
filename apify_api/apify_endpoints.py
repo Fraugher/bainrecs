@@ -74,9 +74,7 @@ def wait_run():
 @apify_endpoints.route('/pop-db', methods=['GET', 'POST'])
 @require_apify_api_key
 def pop_db():
-    print(f"FILE_BASE config: '{current_app.config.get('FILE_BASE')}'")
-    print(f"Config keys: {list(current_app.config.keys())}")
-    
+
     review_count = 0
     if request.method == 'POST':
         run_id = request.json.get('runId') if request.is_json else None
@@ -171,6 +169,9 @@ def pop_type():
                 restaurant_type=restaurant_type,
             )
             db.session.add(new_restaurant_with_type)
+            print(f"ADDING RESTAIRANT WITH TYPE: {restaurant_type}")
+            print(f" with place name: {place_name}")
+            print(f" with google_maps_id: {google_maps_id}")
         try:
             db.session.commit()
             msg=f"Successfully added restaurant types to database"
