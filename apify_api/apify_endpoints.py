@@ -46,6 +46,20 @@ def start_run():
         <div>visit <a target='_blank' href='{request.host_url}apify/wait-run?run={run_id}'>
         {request.host_url}apify/wait-reviews?run={run_id}</a> for status update</div>""", 200
 
+@apify_endpoints.route('/start-run-for-types')
+@require_apify_api_key
+def start_run_for_types():
+    client = ApifyClient(current_app.config['APIFY_API_KEY'])
+    file_path = current_app.config['FILE_BASE'] + 'json/apify_run__for_types_inputs.json'
+    with open(file_path, 'r') as f:
+        run_input = json.load(f)
+
+    actor_run = client.actor(current_app.config['APIFY_RESTAURANT_REVIEW_URI']).start(run_input=run_input)
+    run_id = actor_run["id"]
+    return f"""<div>Reviews scraping run started with ID: {run_id} at {datetime.now().strftime("%H:%M:%S")}</div>
+        <div>visit <a target='_blank' href='{request.host_url}apify/wait-run?run={run_id}'>
+        {request.host_url}apify/wait-reviews?run={run_id}</a> for status update</div>""", 200
+
 @apify_endpoints.route('/wait-run')
 @require_apify_api_key
 def wait_run():
@@ -158,7 +172,7 @@ def pop_type():
     if run_info['status'] != "SUCCEEDED":
         return f"Data is not ready for run with ID {run_id}, run status is '{run_info['status']}'"
     # a run type is a run for a particular type of restaurant like Italian, Japanese, American, etc.
-    type_file_path = current_app.config['FILE_BASE'] + 'json/apify_run_type.json'
+    type_file_path = current_app.config['FILE_BASE'] + 'json/apify_run_for_type_inputs.json'
     with open(type_file_path, 'r') as f:  # this is a hack for now to get different types like Chinese, Italian
         run_type = json.load(f)
         restaurant_type = run_type.get('restaurant_type', 'all')
