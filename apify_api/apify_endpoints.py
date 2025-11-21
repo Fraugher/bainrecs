@@ -205,7 +205,7 @@ def pop_reviews_only    ():
             db.session.commit()
             db.session.expire_all()
             db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RATINGS']))
-            db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RESTAURANTS']))
+            #db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RESTAURANTS']))
             db.session.commit()
             msg=f"Successfully added {review_count} reviews to database"
         except Exception as e:
