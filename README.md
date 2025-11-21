@@ -119,9 +119,11 @@ See [DOCKER.md](DOCKER.md) for detailed Docker instructions.
 ## API Endpoints
 
 ### Apify Collection Endpoints
-- `GET /apify/start-run` - Start Apify RUN -> review collection
-- `GET /apify/wait-run` - Wait/monitor for RUN collection completion
+- `GET /apify/start-run` - Start Apify RUN -> review collection, uses apify_run_inputs.json
 - `POST /apify/pop-db` - requires runId Populate database with reviews from Apify RUN
+- `GET /apify/start_run_for_types` - Start Apify RUN for a particular type of restaurant, uses apify_run_for_types_inputs.json
+- `POST /apify/pop-types` - requires runId Populates database with reviews from run_for_types
+- `POST /apify/pop-reviews-only` - requires runId, use in concert with pop=types
 - `GET /apify/health` - Health check
 
 ### Review Access Endpoints
