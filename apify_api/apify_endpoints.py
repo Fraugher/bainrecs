@@ -50,7 +50,7 @@ def start_run():
 @require_apify_api_key
 def start_run_for_types():
     client = ApifyClient(current_app.config['APIFY_API_KEY'])
-    file_path = current_app.config['FILE_BASE'] + 'json/apify_run__for_types_inputs.json'
+    file_path = current_app.config['FILE_BASE'] + 'json/apify_run_for_types_inputs.json'
     with open(file_path, 'r') as f:
         run_input = json.load(f)
 
