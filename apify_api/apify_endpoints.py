@@ -2,6 +2,8 @@ from apify_client import ApifyClient
 from flask import Blueprint, jsonify, json, request, current_app
 from functools import wraps
 from datetime import datetime
+from sqlalchemy.exc import IntegrityError
+
 from extensions import db
 import json
 from models import Review, Restaurant
@@ -153,6 +155,7 @@ def pop_type():
     run_info = run_client.get()
     if run_info['status'] != "SUCCEEDED":
         return f"Data is not ready for run with ID {run_id}, run status is '{run_info['status']}'"
+    # a run type is a run for a particular type of restaurant like Italian, Japanese, American, etc.
     type_file_path = current_app.config['FILE_BASE'] + 'json/apify_run_type.json'
     with open(type_file_path, 'r') as f:  # this is a hack for now to get different types like Chinese, Italian
         run_type = json.load(f)
@@ -176,9 +179,12 @@ def pop_type():
         try:
             db.session.commit()
             msg=f"Successfully added restaurant types to database"
+        except IntegrityError as e:
+            db.session.rollback()
+            msg = f"Some restaurants and types already existed (skipped duplicates)"
         except Exception as e:
             db.session.rollback()
-            msg=f"Error adding reviews: {e}"
+            msg=f"Error adding restaurant types : {e}"
     else:
         msg= f"Error retrieving run with ID '{run_id}'."
     return msg
