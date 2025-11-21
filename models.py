@@ -30,10 +30,10 @@ class Restaurant(db.Model):
     __tablename__ = 'restaurants'
     __table_args__ = {'extend_existing': True}
 
-    google_maps_id = db.Column(db.String(128))
+    google_maps_id = db.Column(db.String(128), primary_key=True)
     place_name = db.Column(db.String(255), nullable=False)
     place_address = db.Column(db.String(255))
-    restaurant_type = db.Column(db.String(50))
+    restaurant_type = db.Column(db.String(50), primary_key=True)
 
     def __repr__(self):
-        return f'<Restaurant {self.id}: {self.place_name} ({self.restaurant_type})>'
+        return f'<Restaurant {self.google_maps_id} {self.restaurant_type}:: {self.place_name} ({self.place_address})>'
