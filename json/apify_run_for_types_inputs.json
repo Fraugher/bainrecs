@@ -1,6 +1,6 @@
 {
-  "restaurant_type": "Japanese",
-  "keywords": ["Japanese upscale"],
+  "restaurant_type": "Indian",
+  "keywords": ["Indian"],
   "location": "2 Bloor Street E,  Toronto, ON M4W 1A8, Canada",
   "maxDistanceMeters": 10000,
   "maxCrawledPlaces": 50,
