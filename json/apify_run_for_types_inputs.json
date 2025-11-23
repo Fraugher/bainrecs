@@ -1,0 +1,14 @@
+{
+  "restaurant_type": "Indian",
+  "keywords": ["Indian"],
+  "location": "2 Bloor Street E,  Toronto, ON M4W 1A8, Canada",
+  "maxDistanceMeters": 10000,
+  "maxCrawledPlaces": 50,
+  "checkNames": false,
+  "requireExactNameMatch": false,
+  "deeperCityScrape": false,
+  "maxReviewsPerPlaceAndProvider": 1,
+  "reviewsFromDate" : "2022-11-01",
+  "scrapeReviewPictures": false,
+  "scrapeReviewResponses": false
+}
