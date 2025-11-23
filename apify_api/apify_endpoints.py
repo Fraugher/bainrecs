@@ -2,8 +2,6 @@ from apify_client import ApifyClient
 from flask import Blueprint, jsonify, json, request, current_app
 from functools import wraps
 from datetime import datetime
-from sqlalchemy.exc import IntegrityError
-
 from extensions import db
 import json
 from models import Review, Restaurant
@@ -32,6 +30,25 @@ def clean_database():
         db.session.rollback()
         return False, f"Error cleaning the database: {e}"
 
+def get_run_status(run_id):
+    """Helper function to get Apify run status"""
+    client = ApifyClient(current_app.config['APIFY_API_KEY'])
+    try:
+        run_client = client.run(run_id)
+        run_info = run_client.get()
+        return run_info['status'], None
+    except ApifyApiError as e:
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            return None, f"Error retrieving run with ID '{run_id}': {e}. The provided run ID likely does not exist or is incorrect."
+        elif "badly formed" in str(e).lower() or "invalid format" in str(e).lower():
+            return None, f"Error retrieving run with ID '{run_id}': {e}. The provided run ID is badly formed or in an invalid format."
+        else:
+            return None, f"Error retrieving run with ID '{run_id}': {e}. An unexpected Apify API error occurred."
+    except Exception as e:
+        return None, f"An unexpected error occurred: {e}"
+
+# start-run, wait-run, and pop-db are used in concert to seed a new database with "all" restaurants
+# they rely on apify_run_inputs.json
 @apify_endpoints.route('/start-run')
 @require_apify_api_key
 def start_run():
@@ -39,53 +56,26 @@ def start_run():
     file_path = current_app.config['FILE_BASE'] + 'json/apify_run_inputs.json'
     with open(file_path, 'r') as f:
         run_input = json.load(f)
+    run_input['maxCrawledPlaces'] = 200 # we want more places for the 'All restaurants' run
 
     actor_run = client.actor(current_app.config['APIFY_RESTAURANT_REVIEW_URI']).start(run_input=run_input)
     run_id = actor_run["id"]
     return f"""<div>Reviews scraping run started with ID: {run_id} at {datetime.now().strftime("%H:%M:%S")}</div>
         <div>visit <a target='_blank' href='{request.host_url}apify/wait-run?run={run_id}'>
-        {request.host_url}apify/wait-reviews?run={run_id}</a> for status update</div>""", 200
-
-@apify_endpoints.route('/start-run-for-types')
-@require_apify_api_key
-def start_run_for_types():
-    client = ApifyClient(current_app.config['APIFY_API_KEY'])
-    file_path = current_app.config['FILE_BASE'] + 'json/apify_run_for_types_inputs.json'
-    with open(file_path, 'r') as f:
-        run_input = json.load(f)
-
-    actor_run = client.actor(current_app.config['APIFY_RESTAURANT_REVIEW_URI']).start(run_input=run_input)
-    run_id = actor_run["id"]
-    return f"""<div>Reviews scraping run started with ID: {run_id} at {datetime.now().strftime("%H:%M:%S")}</div>
-        <div>visit <a target='_blank' href='{request.host_url}apify/wait-run?run={run_id}'>
-        {request.host_url}apify/wait-reviews?run={run_id}</a> for status update</div>""", 200
+        {request.host_url}apify/wait-run?run={run_id}</a> for status update</div>""", 200
 
 @apify_endpoints.route('/wait-run')
 @require_apify_api_key
 def wait_run():
     run_id = request.args.get('run')
     if run_id is None:
-        return "Bad Request"
-    client = ApifyClient(current_app.config['APIFY_API_KEY'])
-    try:
-        run_client = client.run(run_id)
-        run_info = run_client.get()
-        status = run_info['status']
-        return f"Run status: {status} for run: {run_id} at {datetime.now().strftime("%H:%M:%S")}<div><a href='.'>refresh</a> this page for status updates</div>"
-    except ApifyApiError as e:
-        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-            return f"Error retrieving run with ID '{run_id}': {e}. The provided run ID likely does not exist or is incorrect."
-        elif "badly formed" in str(e).lower() or "invalid format" in str(e).lower():
-            return f"Error retrieving run with ID '{run_id}': {e}. The provided run ID is badly formed or in an invalid format."
-        else:
-            if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                return f"Error retrieving run with ID '{run_id}': {e}.  The provided run ID likely does not exist or is incorrect."
-            elif "badly formed" in str(e).lower() or "invalid format" in str(e).lower():
-                return f"Error retrieving run with ID '{run_id}': {e}. The provided run ID is badly formed or in an invalid format."
-            else:
-                return f"Error retrieving run with ID '{run_id}': {e}. An unexpected Apify API error occurred."
-    except Exception as e:
-        return f"An unexpected error occurred: {e}. An unexpected Apify API error occurred."
+        return "Bad Request: run parameter required"
+
+    status, error = get_run_status(run_id)
+    if error:
+        return error
+
+    return f"Run status: {status} for run: {run_id} at {datetime.now().strftime("%H:%M:%S")}<div><a href='.'>refresh</a> this page for status updates</div>"
 
 @apify_endpoints.route('/pop-db', methods=['GET', 'POST'])
 @require_apify_api_key
@@ -112,34 +102,9 @@ def pop_db():
 
     if run_info and 'defaultDatasetId' in run_info and run_info['defaultDatasetId']:  # this is all apify protocol
         for review in client.dataset(run_info["defaultDatasetId"]).iterate_items():
-            google_maps_id = review.get("googleMapsPlaceId")
-            place_name = review.get("placeName","")
-            place_url = review.get("placeUrl","")
-            place_address = review.get("placeAddress","")
-            provider = review.get("provider","")
-            review_title= review.get("reviewTitle", "")
-            review_text = review.get("reviewText","")
-            review_date = review.get("reviewDate", None)
-            review_rating = review.get("reviewRating", None)
-            author_name = review.get("authorName","")
-            review_count += 1
-            new_review = Review(
-                google_maps_id=google_maps_id,
-                place_name=place_name,
-                place_url=place_url,
-                place_address=place_address,
-                provider = provider,
-                review_title=review_title,
-                review_text=review_text,
-                review_date=review_date if isinstance(review_date, datetime) else None,
-                review_rating=review_rating,
-                author_name=author_name,
-                ignore_for_quality=False,
-                ignore_for_rating=False,
-                ignore_for_insufficient=False,
-                selected_as_top_rating=False
-            )
+            new_review = Review.from_apify_data(review)
             db.session.add(new_review)
+            review_count += 1
         try:
             db.session.commit()
             db.session.expire_all()
@@ -154,98 +119,92 @@ def pop_db():
         msg= f"Error retrieving run with ID '{run_id}'."
     return msg
 
-@apify_endpoints.route('/pop-reviews-only', methods=['GET', 'POST'])
+@apify_endpoints.route('/start-restaurant-type-run')
 @require_apify_api_key
-def pop_reviews_only    ():
+def start_restaurant_type_run ():
+    restaurant_type = request.args.get('restaurant_type')
+    if not restaurant_type:
+        return "Error: 'restaurant_type' query parameter is required", 400
+
+    client = ApifyClient(current_app.config['APIFY_API_KEY'])
+    file_path = current_app.config['FILE_BASE'] + 'json/apify_run_inputs.json'
+    with open(file_path, 'r') as f:
+        run_input = json.load(f)
+
+    # Override with the type from query string
+    run_input['restaurant_type'] = restaurant_type
+    run_input['keywords'] = [restaurant_type]
+
+    actor_run = client.actor(current_app.config['APIFY_RESTAURANT_REVIEW_URI']).start(run_input=run_input)
+    run_id = actor_run["id"]
+    return f"""<div>Reviews scraping run started for {restaurant_type} restaurants with ID: {run_id} at {datetime.now().strftime("%H:%M:%S")}</div>
+        <div>visit <a target='_blank' href='{request.host_url}apify/wait-reviews?run={run_id}&restaurant_type={restaurant_type}'>
+        {request.host_url}apify/wait-restaurant-type-run?run={run_id}&restaurant_type={restaurant_type}</a> for status update</div>""", 200
+
+@apify_endpoints.route('/wait-restaurant-type-run')
+@require_apify_api_key
+def wait_restaurant_type_run():
+    run_id = request.args.get('run')
+    restaurant_type = request.args.get('restaurant_type')
+
+    if run_id is None:
+        return "Bad Request: run parameter required"
+    if restaurant_type is None:
+        return "Bad Request: restaurant_type parameter required"
+
+    status, error = get_run_status(run_id)
+    if error:
+        return error
+
+    status_html = f"""<div>Run status: {status} for {restaurant_type} restaurants (run: {run_id}) at {datetime.now().strftime("%H:%M:%S")}</div>"""
+
+    if status == "SUCCEEDED":
+        status_html += f"""<div style='margin-top: 10px; padding: 10px; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px;'>
+            ✓ Reviews ready! Next step: 
+            <a target='_blank' href='{request.host_url}apify/pop-restaurant-type?runId={run_id}&restaurant_type={restaurant_type}'>
+            Add {restaurant_type} restaurants to database</a>
+        </div>"""
+    else:
+        status_html += f"<div><a href='.'>refresh</a> this page for status updates</div>"
+
+    return status_html
+
+@apify_endpoints.route('/pop-restaurant-type', methods=['GET', 'POST'])
+@require_apify_api_key
+def pop_restaurant_type():
     review_count = 0
+    restaurant_added_count = 0
+    restaurant_skipped_count = 0
+
     if request.method == 'POST':
         run_id = request.json.get('runId') if request.is_json else None
+        restaurant_type = request.json.get('restaurant_type') if request.is_json else None
     else:
         run_id = request.args.get('runId')
+        restaurant_type = request.args.get('restaurant_type')
 
     if run_id is None:
         return "Bad Request: runId parameter required"
+    if restaurant_type is None:
+        return "Bad Request: restaurant_type parameter required"
+
     client = ApifyClient(current_app.config['APIFY_API_KEY'])
     run_client = client.run(run_id)
     run_info = run_client.get()
     if run_info['status'] != "SUCCEEDED":
         return f"Data is not ready for run with ID {run_id}, run status is '{run_info['status']}'"
 
-    if run_info and 'defaultDatasetId' in run_info and run_info['defaultDatasetId']:  # this is all apify protocol
+    if run_info and 'defaultDatasetId' in run_info and run_info['defaultDatasetId']:
         for review in client.dataset(run_info["defaultDatasetId"]).iterate_items():
-            google_maps_id = review.get("googleMapsPlaceId")
-            place_name = review.get("placeName","")
-            place_url = review.get("placeUrl","")
-            place_address = review.get("placeAddress","")
-            provider = review.get("provider","")
-            review_title= review.get("reviewTitle", "")
-            review_text = review.get("reviewText","")
-            review_date = review.get("reviewDate", None)
-            review_rating = review.get("reviewRating", None)
-            author_name = review.get("authorName","")
-            review_count += 1
-            new_review = Review(
-                google_maps_id=google_maps_id,
-                place_name=place_name,
-                place_url=place_url,
-                place_address=place_address,
-                provider = provider,
-                review_title=review_title,
-                review_text=review_text,
-                review_date=review_date if isinstance(review_date, datetime) else None,
-                review_rating=review_rating,
-                author_name=author_name,
-                ignore_for_quality=False,
-                ignore_for_rating=False,
-                ignore_for_insufficient=False,
-                selected_as_top_rating=False
-            )
+            new_review=Review.from_apify_data(review)
             db.session.add(new_review)
-        try:
-            db.session.commit()
-            db.session.expire_all()
-            db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RATINGS']))
-            #db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RESTAURANTS']))
-            db.session.commit()
-            msg=f"Successfully added {review_count} reviews to database"
-        except Exception as e:
-            db.session.rollback()
-            msg=f"Error adding reviews: {e}"
-    else:
-        msg= f"Error retrieving run with ID '{run_id}'."
-    return msg
+            review_count += 1
 
-
-@apify_endpoints.route('/pop-type', methods=['GET', 'POST'])
-@require_apify_api_key
-def pop_type():
-    added_count = 0
-    skipped_count = 0
-    if request.method == 'POST':
-        run_id = request.json.get('runId') if request.is_json else None
-    else:
-        run_id = request.args.get('runId')
-
-    if run_id is None:
-        return "Bad Request: runId parameter required"
-    client = ApifyClient(current_app.config['APIFY_API_KEY'])
-    run_client = client.run(run_id)
-    run_info = run_client.get()
-    if run_info['status'] != "SUCCEEDED":
-        return f"Data is not ready for run with ID {run_id}, run status is '{run_info['status']}'"
-    # a run type is a run for a particular type of restaurant like Italian, Japanese, American, etc.
-    type_file_path = current_app.config['FILE_BASE'] + 'json/apify_run_for_types_inputs.json'
-    with open(type_file_path, 'r') as f:  # this is a hack for now to get different types like Chinese, Italian
-        run_type = json.load(f)
-        restaurant_type = run_type.get('restaurant_type', 'all')
-
-    if run_info and 'defaultDatasetId' in run_info and run_info['defaultDatasetId']:  # this is all apify protocol
-        for review in client.dataset(run_info["defaultDatasetId"]).iterate_items():
+            # Add restaurant type entry
             google_maps_id = review.get("googleMapsPlaceId")
-            place_name = review.get("placeName","")
-            place_address = review.get("placeAddress","")
+            place_name = review.get("placeName", "")
+            place_address = review.get("placeAddress", "")
 
-            # Check if this combination already exists
             existing = Restaurant.query.filter_by(
                 google_maps_id=google_maps_id,
                 restaurant_type=restaurant_type
@@ -259,32 +218,23 @@ def pop_type():
                     restaurant_type=restaurant_type,
                 )
                 db.session.add(new_restaurant_with_type)
-                added_count += 1
+                restaurant_added_count += 1
             else:
-                skipped_count += 1
+                restaurant_skipped_count += 1
 
-            # new_restaurant_with_type = Restaurant(
-            #     google_maps_id=google_maps_id,
-            #     place_name=place_name,
-            #     place_address=place_address,
-            #     restaurant_type=restaurant_type,
-            # )
-            # db.session.add(new_restaurant_with_type)
-            # # print(f"ADDING RESTAIRANT WITH TYPE: {restaurant_type}")
-            # # print(f" with place name: {place_name}")
-            # # print(f" with google_maps_id: {google_maps_id}")
         try:
             db.session.commit()
-            msg = f"Added {added_count} restaurants, skipped {skipped_count} duplicates"
-            #msg=f"Successfully added restaurant types to database"
-        # except IntegrityError as e:
-        #     db.session.rollback()
-        #     msg = f"Some restaurants and types already existed (skipped duplicates)"
+            db.session.expire_all()
+            db.session.execute(db.text(current_app.config['DB_PROCEDURE_MAKE_RATINGS']))
+            db.session.commit()
+
+            msg = f"Successfully added {review_count} reviews and {restaurant_added_count} {restaurant_type} restaurants (skipped {restaurant_skipped_count} duplicates)"
         except Exception as e:
             db.session.rollback()
-            msg=f"Error adding restaurant types : {e}"
+            msg = f"Error adding data: {e}"
     else:
-        msg= f"Error retrieving run with ID '{run_id}'."
+        msg = f"Error retrieving run with ID '{run_id}'."
+
     return msg
 
 @apify_endpoints.route('/clean-db', methods=['POST'])
@@ -353,37 +303,9 @@ def test_pop():
   }
 ]
     for review in reviews:
-        google_maps_id  =review.get("googleMapsPlaceId")
-        place_name = review.get("placeName","")
-        place_url = review.get("placeUrl","")
-        place_address = review.get("placeAddress","")
-        provider = review.get("provider","")
-        review_title= review.get("reviewTitle","")
-        review_text = review.get("reviewText", "")
-        review_date = review.get("reviewDate", None)
-        review_rating = review.get("reviewRating", None)
-        author_name = review.get("authorName","")
-        review_count += 1
-        new_review = Review(
-            google_maps_id=google_maps_id,
-            place_name=place_name,
-            place_url=place_url,
-            place_address=place_address,
-            provider = provider,
-            review_title=review_title,
-            review_text=review_text,
-            review_date=review_date if isinstance(review_date, datetime) else None,
-            review_rating=review_rating,
-            author_name=author_name,
-            ignore_for_quality=False,
-            ignore_for_rating=False,
-            ignore_for_insufficient=False,
-            selected_as_top_rating=False
-        )
-
-        # Add to session
+        new_review = Review.from_apify_data(review)
         db.session.add(new_review)
-
+        review_count += 1
     try:
         db.session.commit()
         msg=f"Successfully added {review_count} reviews to database"
@@ -408,34 +330,9 @@ def pop_file():
         return f"An unexpected error occurred: {e}" #}, 500
 
     for review in reviews:
-        google_maps_id = review.get("googleMapsPlaceId")
-        place_name = review.get("placeName","")
-        place_url = review.get("placeUrl","")
-        place_address = review.get("placeAddress","")
-        provider = review.get("provider","")
-        review_text = review.get("reviewText","")
-        review_date = review.get("reviewDate", None)
-        review_rating = review.get("reviewRating", None)
-        author_name = review.get("authorName","")
-        review_count += 1
-        new_review = Review(
-            google_maps_id=google_maps_id,
-            place_name=place_name,
-            place_url=place_url,
-            place_address=place_address,
-            provider = provider,
-            review_text=review_text,
-            review_date=review_date if isinstance(review_date, datetime) else None,
-            review_rating=review_rating,
-            author_name=author_name,
-            ignore_for_quality=False,
-            ignore_for_rating=False,
-            ignore_for_insufficient=False,
-            selected_as_top_rating=False
-        )
-
-        # Add to session
+        new_review = Review.from_apify_data(review)
         db.session.add(new_review)
+        review_count += 1
     try:
         db.session.commit()
         msg=f"Successfully added {review_count} reviews to database"
@@ -452,138 +349,3 @@ def health():
         'status': 'healthy' if api_key_configured else 'degraded',
         'api_key_configured': api_key_configured
     }), 200 if api_key_configured else 503
-
-# @apify_endpoints.route('/debug')
-# def apify_debug():
-#     import os
-#
-#     current_dir = os.getcwd()
-#     file_name = 'json/search.json'
-#
-#     # Check multiple possible locations
-#     locations = [
-#         os.path.join(current_dir, file_name),
-#         os.path.join('/home/fraugher/bainrecs', file_name),
-#         os.path.join(os.path.dirname(os.path.abspath(__file__)), file_name),
-#     ]
-#
-#     debug_info = f"<h3>Debug Info:</h3>"
-#     debug_info += f"<p>Current working directory: {current_dir}</p>"
-#     debug_info += f"<p>This file location: {os.path.abspath(__file__)}</p>"
-#     debug_info += f"<h4>Checking locations:</h4><ul>"
-#
-#     for loc in locations:
-#         exists = os.path.exists(loc)
-#         debug_info += f"<li>{loc} - {'✓ EXISTS' if exists else '✗ NOT FOUND'}</li>"
-#
-#     # List files in current directory
-#     debug_info += f"</ul><h4>Files in {current_dir}:</h4><ul>"
-#     try:
-#         for f in os.listdir(current_dir):
-#             debug_info += f"<li>{f}</li>"
-#     except Exception as e:
-#         debug_info += f"<li>Error listing: {e}</li>"
-#
-#     debug_info += "</ul>"
-#
-#     # List files in project root
-#     debug_info += f"<h4>Files in /home/fraugher/bainrecs:</h4><ul>"
-#     try:
-#         for f in os.listdir('/home/fraugher/bainrecs'):
-#             debug_info += f"<li>{f}</li>"
-#     except Exception as e:
-#         debug_info += f"<li>Error listing: {e}</li>"
-#
-#     debug_info += "</ul>"
-#
-#     return debug_info
-
-# @apify_endpoints.route('/debug')
-# def apify_debug():
-#     import os
-#
-#     current_dir = os.getcwd()
-#     file_name = 'json/search.json'
-#
-#     # Check multiple possible locations
-#     locations = [
-#         os.path.join(current_dir, file_name),
-#         os.path.join('/home/fraugher/bainrecs', file_name),
-#         os.path.join(os.path.dirname(os.path.abspath(__file__)), file_name),
-#     ]
-#
-#     debug_info = f"<h3>Debug Info:</h3>"
-#     debug_info += f"<p>Current working directory: {current_dir}</p>"
-#     debug_info += f"<p>This file location: {os.path.abspath(__file__)}</p>"
-#     debug_info += f"<h4>Checking locations:</h4><ul>"
-#
-#     for loc in locations:
-#         exists = os.path.exists(loc)
-#         debug_info += f"<li>{loc} - {'✓ EXISTS' if exists else '✗ NOT FOUND'}</li>"
-#
-#     # List files in current directory
-#     debug_info += f"</ul><h4>Files in {current_dir}:</h4><ul>"
-#     try:
-#         for f in os.listdir(current_dir):
-#             debug_info += f"<li>{f}</li>"
-#     except Exception as e:
-#         debug_info += f"<li>Error listing: {e}</li>"
-#
-#     debug_info += "</ul>"
-#
-#     # List files in project root
-#     debug_info += f"<h4>Files in /home/fraugher/bainrecs:</h4><ul>"
-#     try:
-#         for f in os.listdir('/home/fraugher/bainrecs'):
-#             debug_info += f"<li>{f}</li>"
-#     except Exception as e:
-#         debug_info += f"<li>Error listing: {e}</li>"
-#
-#     debug_info += "</ul>"
-#
-#     return debug_info
-
-
-# @apify_endpoints.route('/one2db')
-# def one2db():
-#     if request.is_json:
-#         try:
-#             review=request.get_json()
-#         except (Exception,):
-#             return {"message": "Malformed request"}, 400
-#     else:
-#         return {"message": "Malformed request"}, 400
-#
-#     # validate this data...
-#     google_maps_id = review.get("googleMapsPlaceId")
-#     place_name = review.get("placeName","")
-#     place_url = review.get("placeUrl","")
-#     place_address = review.get("placeAddress","")
-#     provider = review.get("provider","Bain")
-#     review_text = review.get("reviewText","")
-#     review_date = review.get("reviewDate", datetime.now().strftime("%Y-%m-%d"))
-#     review_rating = review.get("reviewRating", None)
-#     author_name = review.get("authorName","")
-#
-#     new_review = Review(
-#         google_maps_id=google_maps_id,
-#         place_name=place_name,
-#         place_url=place_url,
-#         place_address=place_address,
-#         provider = provider,
-#         review_text=review_text,
-#         review_date=review_date if isinstance(review_date, datetime) else None,
-#         review_rating=review_rating,
-#         author_name=author_name,
-#         ignore_for_quality=False,
-#         ignore_for_rating=False,
-#         ignore_for_insufficient=False,
-#         selected_as_top_rating=False
-#     )
-#     db.session.add(new_review)
-#     try:
-#         db.session.commit()
-#         return {"message": "Successfully added your Bain review to database"},201
-#     except Exception as e:
-#         db.session.rollback()
-#         return {"message": f"Error adding your review to our database, detail: {e}"},200

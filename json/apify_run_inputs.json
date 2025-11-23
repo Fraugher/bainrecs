@@ -1,12 +1,15 @@
 {
-  "keywords_bup_ignored": ["upscale", "business", "quiet", "private dining"],
+  "keywords": ["upscale", "business", "quiet", "private dining"],
+  "_keywordsGetsOverridenWhenSearchingByRestaurantType": ["Italian"],
   "location": "2 Bloor Street E,  Toronto, ON M4W 1A8, Canada",
   "maxDistanceMeters": 10000,
-  "maxCrawledPlaces": 100,
+  "maxCrawledPlaces": 50,
+  "_maxCrawledPlaces_fullRun": 100,
   "checkNames": false,
   "requireExactNameMatch": false,
   "deeperCityScrape": false,
   "maxReviewsPerPlaceAndProvider": 10,
+  "_maxReviewsPerPlaceAndProvider_dev": 1,
   "reviewsFromDate" : "2022-11-01",
   "scrapeReviewPictures": false,
   "scrapeReviewResponses": false
