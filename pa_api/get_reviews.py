@@ -8,10 +8,8 @@ review_endpoints= Blueprint('get_reviews', __name__)
 def load_query(filename):
     with open(f'queries/{filename}', 'r') as f:
         return f.read()
-# def get_sql_from_file():
-    # query = load_query('get_all_reviews.sql')
 
-# get all restaurants with their reviews
+# 1. get all restaurants with their reviews
 @review_endpoints.route('/reviews', methods=['GET'])
 @review_endpoints.route('/reviews', methods=['GET'])
 def get_all_reviews():
@@ -88,7 +86,6 @@ def get_all_reviews():
             'success': False,
             'error': str(e)
         }), 500
-
 
 # 2. GET all restaurants with their ratings (including Bain ratings)
 @review_endpoints.route('/ratings', methods=['GET'])
@@ -225,7 +222,6 @@ def get_restaurant_reviews(google_maps_id):
             'error': str(e)
         }), 500
 
-
 # 4. GET one restaurant with its ratings (including Bain ratings)
 @review_endpoints.route('/ratings/<google_maps_id>', methods=['GET'])
 def get_restaurant_ratings(google_maps_id):
@@ -277,7 +273,6 @@ def get_restaurant_ratings(google_maps_id):
             'success': False,
             'error': str(e)
         }), 500
-
 
 # 5. Search restaurants and reviews by place_name keyword
 @review_endpoints.route('/search_reviews', methods=['GET'])
@@ -360,7 +355,6 @@ def search_reviews():
             'success': False,
             'error': str(e)
         }), 500
-
 
 # 6. Search restaurants and ratings by place_name keyword
 @review_endpoints.route('/search_ratings', methods=['GET'])

@@ -9,7 +9,8 @@ from apify_client.errors import ApifyApiError
 
 apify_endpoints = Blueprint('apify_endpoints', __name__)
 
-def require_apify_api_key(f): #decorator to ensure api key
+def require_apify_api_key(f): 
+    """decorator to ensure api key"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_app.config['APIFY_API_KEY']:
