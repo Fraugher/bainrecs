@@ -213,7 +213,7 @@ Notes:
 - `GET /reviews/reviews` - Get all reviews for all restaurants, returns detailed reviews
 
 #### Get Specific Restaurant
-- `GET /reviews/ratings/<google_maps_id>` - Get ratings, , returns info and rating for a specific restaurant
+- `GET /reviews/ratings/<google_maps_id>` - Get ratings, returns info and rating for a specific restaurant
 - `GET /reviews/reviews/<google_maps_id>` - Get reviews for specific restaurant, returns detailed reviews
 
 #### Search & Filter
@@ -300,7 +300,7 @@ curl http://localhost:5000/reviews/search_reviews?keyword=Bistro&restaurant_type
 ### Main Tables
 - **reviews**: All scraped reviews (source of truth)
 - **ratings**: Aggregated ratings per restaurant (created by `MAKE_RATINGS`)
-- **restaurants**: Restaurant meta data and -type associations (created by `MAKE_RESTAURANTS` and aggregated in type-runs)
+- **restaurants**: Restaurant metadata and -type associations (created by `MAKE_RESTAURANTS` and aggregated in type-runs)
 - **bain_ratings**: Ratings from Bain staff reviews (created by `MAKEBAINRATINGS`)
 
 ### Stored Procedures
