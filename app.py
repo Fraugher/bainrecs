@@ -25,22 +25,6 @@ def create_app(config_object=None):
         else:
             app.config.from_object(ProductionConfig)
 
-    def create_app(config_object=None):
-        app = Flask(__name__)
-        CORS(app)
-
-        env = config.Environment(os.getenv('FLASK_ENV', 'development'))
-
-        if config_object:
-            app.config.from_object(config_object)
-        else:
-            if env == config.Environment.DEVELOPMENT:
-                app.config.from_object(DevelopmentConfig)
-            else:
-                app.config.from_object(ProductionConfig)
-
-        # ... rest of setup
-        return app
     db.init_app(app)  # Initialize db with your Flask app
 
     # Blueprints
@@ -63,7 +47,8 @@ def create_app(config_object=None):
 
 app = create_app()
 
+# Development only - not executed in production WSGI environment like PythonAnywhere
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Operations requiring app context
+        db.create_all()
     app.run(debug=True)
